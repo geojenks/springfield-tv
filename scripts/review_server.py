@@ -5,7 +5,9 @@
 
 then open http://localhost:8765/ . The page (scripts/review.html) loads work/segments.csv,
 plays the episode file for each row (range requests, so seeking works), lets you step
-frames, set start/end, accept/reject, flag cutaways, and saves edits to work/review.json
+frames, set start/end (and an optional later "video from" point: audio starts at start, the
+picture freezes on the video_from frame until the clock catches up), accept/reject, flag
+cutaways, and saves edits to work/review.json
 and a merged work/segments_reviewed.csv on every change.
 """
 import argparse, csv, glob, json, os, re, sys
@@ -43,8 +45,9 @@ def write_reviewed(work):
         r["category"] = e.get("category") or r["category"]
         r["cutaways"] = "1" if e.get("cutaways") else "0"
         r["note"] = e.get("note", "")
+        r["video_from"] = e.get("video_from", "")
         out.append(r)
-    fields = list(rows[0].keys()) + ["cutaways", "note"] if rows else ["id"]
+    fields = list(rows[0].keys()) + ["cutaways", "note", "video_from"] if rows else ["id"]
     with open(os.path.join(work, "segments_reviewed.csv"), "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=fields)
         w.writeheader()

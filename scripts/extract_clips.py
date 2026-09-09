@@ -2,9 +2,13 @@
 """Cut clips from your own episode files using start/end timestamps.
 
 Input is either a catalog CSV (season, episode, title columns) or work/segments_reviewed.csv
-from the review page (episode = SxxEyy, category, cutaways, note). Only rows with both
+from the review page (episode = SxxEyy, category, cutaways, note, video_from). Only rows with both
 `start` and `end` (HH:MM:SS[.ss] or MM:SS) are processed. Episode files are found by
 globbing for SxxEyy anywhere under --source. Writes <out>/index.csv describing every clip.
+
+`video_from` (later than start): audio runs from `start`, but the picture holds the frame at
+`video_from` until the clock reaches it (the I&S theme starting over a sofa shot). Forces a
+re-encode for that row.
 
 Usage:
   python scripts/extract_clips.py --source ~/Videos/Simpsons --out clips
@@ -60,12 +64,20 @@ def main():
         name = f"S{season:02d}E{episode:02d}_{r['id']}_{safe(label)}.mp4"
         dst = os.path.join(a.out, name)
         index.append(dict(file=name, id=r["id"], episode=f"S{season:02d}E{episode:02d}", category=label,
-                          start=r["start"], end=r["end"], cutaways=r.get("cutaways", "0"), note=r.get("note", "")))
+                          start=r["start"], end=r["end"], cutaways=r.get("cutaways", "0"), note=r.get("note", ""),
+                          video_from=r.get("video_from", "")))
         if os.path.exists(dst):
             continue
         cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
                "-ss", r["start"], "-t", f"{secs(r['end']) - secs(r['start']):.3f}", "-i", src]
-        if a.precise:
+        hold = secs(r["video_from"]) - secs(r["start"]) if r.get("video_from") else 0
+        if hold > 0:
+            # drop the first `hold` s of video, then pad the front with clones of the new first frame
+            cmd += ["-filter_complex",
+                    f"[0:v]trim=start={hold:.3f},setpts=PTS-STARTPTS,"
+                    f"tpad=start_duration={hold:.3f}:start_mode=clone[v]",
+                    "-map", "[v]", "-map", "0:a?"]
+        if a.precise or hold > 0:
             cmd += ["-c:v", "libx264", "-crf", "20", "-preset", "fast", "-c:a", "aac", "-b:a", "128k"]
         else:
             cmd += ["-c", "copy"]  # fast, cuts land on nearest keyframe
