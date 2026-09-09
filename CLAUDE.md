@@ -54,14 +54,16 @@ Bumblebee Man, adverts, "we now return to" bumpers), for a channel-hopping simul
    - `refs/*.png` dHash pulls the start back to a title card if one sits ≤ 10 s before the run.
 3. `python scripts/review_server.py --source <eps>` → http://localhost:8765/ . Each row plays the
    episode file (range requests), frame-step / ±1 s / ±5 s, "set start/end = here", accept/reject,
-   category edit, **cutaways** flag (prefilled when `screen_spans` has gaps), note, and an optional
-   **video from** point (`v`): audio starts at `start`, picture holds the `video_from` frame until the
-   clock reaches it (I&S theme starting over the sofa). Autosaves to
+   category edit, **cutaways** flag (prefilled when `screen_spans` has gaps), note, and **holds**:
+   `a-b; a-b` ranges where the picture freezes on the frame at b while audio continues (`v` =
+   hold from start to here for the I&S theme over the sofa; `{` `}` mark a mid-clip sofa cutaway;
+   "prefill from screen gaps" turns the `screen_spans` gaps into holds). "play segment" previews
+   holds with a canvas overlay. Autosaves to
    `work/review.json`; accepted rows are merged into `work/segments_reviewed.csv`.
    `segments.html` (static, tick + export) still exists but the server page supersedes it.
 4. `python scripts/extract_clips.py --source <eps> --catalog work/segments_reviewed.csv --precise`
-   → `clips/S05E07_<id>_<category>.mp4` + `clips/index.csv` (carries cutaways, note, video_from).
-   Rows with `video_from` are re-encoded via trim + tpad(clone) even without `--precise`.
+   → `clips/S05E07_<id>_<category>.mp4` + `clips/index.csv` (carries cutaways, note, holds).
+   Rows with `holds` are re-encoded (trim pieces + tpad clone + concat) even without `--precise`.
 
 Cutaways policy (user decision): do NOT splice out sofa shots while the TV audio continues; keep
 the whole span and flag `cutaways=1`. The player can route flagged clips to their own channel.

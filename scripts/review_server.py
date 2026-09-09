@@ -5,16 +5,17 @@
 
 then open http://localhost:8765/ . The page (scripts/review.html) loads work/segments.csv,
 plays the episode file for each row (range requests, so seeking works), lets you step
-frames, set start/end (and an optional later "video from" point: audio starts at start, the
-picture freezes on the video_from frame until the clock catches up), accept/reject, flag
-cutaways, and saves edits to work/review.json
+frames, set start/end, mark "holds" (a-b ranges where the picture freezes on the frame at b
+while the audio continues: the I&S theme starting over the sofa, sofa cutaways mid-cartoon),
+accept/reject, flag cutaways, and saves edits to work/review.json
 and a merged work/segments_reviewed.csv on every change.
 """
-import argparse, csv, glob, json, os, re, sys
+import argparse, csv, glob, json, os, re, sys, threading
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 TAG = re.compile(r"S(\d{2})E(\d{2})", re.I)
+SAVE_LOCK = threading.Lock()
 
 
 def find_videos(source):
@@ -45,9 +46,9 @@ def write_reviewed(work):
         r["category"] = e.get("category") or r["category"]
         r["cutaways"] = "1" if e.get("cutaways") else "0"
         r["note"] = e.get("note", "")
-        r["video_from"] = e.get("video_from", "")
+        r["holds"] = e.get("holds") or (f"{r['start']}-{e['video_from']}" if e.get("video_from") else "")
         out.append(r)
-    fields = list(rows[0].keys()) + ["cutaways", "note", "video_from"] if rows else ["id"]
+    fields = list(rows[0].keys()) + ["cutaways", "note", "holds"] if rows else ["id"]
     with open(os.path.join(work, "segments_reviewed.csv"), "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=fields)
         w.writeheader()
@@ -85,8 +86,12 @@ class Handler(SimpleHTTPRequestHandler):
             return self.send_error(404)
         n = int(self.headers.get("Content-Length", 0))
         data = json.loads(self.rfile.read(n).decode("utf-8"))
-        with open(os.path.join(self.work, "review.json"), "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=1)
+        rp = os.path.join(self.work, "review.json")
+        with SAVE_LOCK:
+            cur = json.load(open(rp, encoding="utf-8")) if os.path.exists(rp) else {}
+            cur.update(data)                      # per-row merge so two open tabs don't clobber each other
+            with open(rp, "w", encoding="utf-8") as f:
+                json.dump(cur, f, indent=1)
         k = write_reviewed(self.work)
         body = json.dumps({"ok": True, "accepted": k}).encode()
         self.send_response(200)
