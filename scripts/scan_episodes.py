@@ -30,12 +30,12 @@ SUB_PATTERNS = {
 }
 
 # ---------- frame decoding ----------
-def frames_1fps(path):
+def frames_1fps(path, w=W, h=H):
     cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", path,
-           "-vf", f"fps=1,scale={W}:{H}", "-f", "rawvideo", "-pix_fmt", "rgb24", "-"]
+           "-vf", f"fps=1,scale={w}:{h}", "-f", "rawvideo", "-pix_fmt", "rgb24", "-"]
     raw = subprocess.run(cmd, capture_output=True, check=True).stdout
-    n = len(raw) // (W * H * 3)
-    return np.frombuffer(raw, np.uint8)[: n * W * H * 3].reshape(n, H, W, 3)
+    n = len(raw) // (w * h * 3)
+    return np.frombuffer(raw, np.uint8)[: n * w * h * 3].reshape(n, h, w, 3)
 
 def yellow_ratio(f):
     r, g, b = f[..., 0].astype(int), f[..., 1].astype(int), f[..., 2].astype(int)

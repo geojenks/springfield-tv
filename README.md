@@ -49,17 +49,19 @@ Two steps, both stdlib + numpy + Pillow + ffmpeg:
 
 ```
 python scripts/fetch_frinkiac_subs.py --seasons 1-9                 # subtitle tracks -> work/subs/
-python scripts/find_segments.py --source /path/to/episodes --seasons 5-7
+python scripts/find_segments.py --source /path/to/episodes --seasons 5-7 --anchorless
 ```
 
 `fetch_frinkiac_subs.py` pulls each episode's full subtitle track (with millisecond timings) from
 Frinkiac; the timings line up with common 480×360 rips to within a couple of seconds.
 `find_segments.py` searches those subtitles for anchors (Troy McClure's intro, the sung
 Itchy & Scratchy title, "I'm Kent Brockman", "we now return to…", McBain, adverts) and then finds
-the segment's edges in the video: frames drawn inside the purple in-show TV bezel are the primary
-cue, runs without Simpsons-yellow the fallback. It writes `work/segments.csv` and
+the segment's edges in the video: frames drawn inside the in-show TV are the primary cue, either
+the purple bezel or, more generally, the rounded screen mask of any colour (a flat plateau then a
+step along each corner diagonal), which also catches full-screen news bulletins, adverts and cold
+opens; runs without Simpsons-yellow are the fallback. With `--anchorless` every screen run of 8 s
+or more that no subtitle anchor claimed is reported too, with the dialogue heard inside it, which
+is how season 1 (no sung I&S title yet) gets found. It writes `work/segments.csv` and
 `work/segments.html`, a review page with the frames just inside and outside each cut and a
-button that exports the ticked rows as CSV for the catalog.
-
-Segments shown full-screen (no bezel) with yellow characters in shot are still flagged
-`anchor_only` and need trimming by eye.
+button that exports the ticked rows as CSV for the catalog. The `screen_spans` column lists the
+on-screen sub-runs inside a segment; the gaps are cutaways to the sofa.

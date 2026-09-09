@@ -34,7 +34,20 @@ Bumblebee Man, adverts, "we now return to" bumpers), for a channel-hopping simul
    - boundary, primary: **bezel** — all four corners are the in-show TV's purple bezel
      (~RGB 55,38,88, flat) and the centre is lit; runs bridged over ≤ 8 s sofa cutaways.
      Precision on S5–7 review: essentially 100%.
+   - boundary, also primary: **mask** — screen-POV cue independent of bezel colour: along each
+     corner diagonal (skip px 0–2, rips have a dark edge) a flat plateau then a step ≥ 30 grey
+     levels into the picture, vertically paired corners the same colour. Catches season-1 grey
+     rounded masks, wooden TVs, full-screen news bulletins/adverts drawn with rounded corners,
+     cold opens. ~65–80% precision alone; FPs are credits, telescope/iris masks, dark scenes.
+     Frames decoded at 160×120 for this (96×54 is too small for the diagonal profile).
    - fallback: no-yellow run near the anchor (~50% right); else `anchor_only` ±25 s (needs eyes).
+     Most remaining anchor_only rows are dialogue *mentions* (not TV); true full-screen shots
+     with no mask (Kent in the news chopper, S07E23 1:08) stay unfound.
+   - `--anchorless`: every bezel/mask run ≥ 8 s that no anchor claimed becomes a `screen`
+     row (method `screen_only`, conf 0.4) with the dialogue heard inside it. ~1 per episode on
+     S5–7, ~80% real; on S1 it is the main source (no sung I&S title yet).
+   - `screen_spans` column: on-screen sub-runs inside the segment; the gaps are sofa cutaways,
+     to be spliced out at extraction time (extract_clips does not do this yet).
    - overlapping rows from different anchors are merged (`category` joined with `+`).
    - `refs/*.png` dHash pulls the start back to a title card if one sits ≤ 10 s before the run.
 3. Human ticks rows in `segments.html`, exports CSV, pastes into the catalog; `extract_clips.py`.
@@ -42,11 +55,12 @@ Bumblebee Man, adverts, "we now return to" bumpers), for a channel-hopping simul
 `scan_episodes.py` (yellow-only scan, ~1 in 5 precision) is superseded; kept for its helpers.
 
 ## Known gaps / next steps
-1. **Full-screen segments** (Kent at the news desk, Troy's IBN advert, opening-cold-on-TV
-   episodes) have no bezel and no yellow-free run → `anchor_only`. Needs a new cue: per-season
-   `refs/` of the Channel 6 desk / IBN card, or CLIP zero-shot on 1 fps frames.
-2. Sung I&S line is missed by some Frinkiac tracks; add bezel-run + title-card-hash as an
-   anchorless I&S detector to catch the rest (catalog gives expected count per episode).
+1. `extract_clips.py` should honour `screen_spans` (concat the on-screen sub-runs, drop cutaways).
+   TV-in-shot segments where the set is small in frame (S01E04 8:58) are not worth extracting.
+2. Full-screen shots with no mask: tried CLIP ViT-B/32 kNN against bezel-confirmed frames
+   (torch cu121 + open_clip installed): no separation, window max below background p99. Not
+   pursued; needs a different idea (audio? per-scene shot matching) or eyes.
+   Label `screen` rows by category from their dialogue (regex/LLM) instead of leaving "screen".
 3. Wikisimpsons `Category:TV shows` and `List of Troy McClure media` give titles but no episode
    or timing; resolve each title against `work/subs` to build the other catalog CSVs.
 4. LLM pass over transcript windows for unnamed adverts/shows.
