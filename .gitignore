@@ -1,0 +1,7 @@
+clips/
+*.mp4
+*.mkv
+*.avi
+__pycache__/
+work/
+work_scan.log
