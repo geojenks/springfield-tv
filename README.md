@@ -76,7 +76,8 @@ Each row gets a player for its episode with frame-step and second-step buttons, 
 here", accept/reject, a cutaways flag (the camera goes back to the sofa while the TV audio carries
 on; those clips are kept whole and flagged so the player can treat them as their own channel) and a
 note, and **holds**: `a-b` ranges (press `v` for start→here, or `{` `}` around a sofa cutaway) where the
-picture freezes on the frame at `b` while the audio keeps going; "play segment" previews them.
+picture freezes on the frame at `b` while the audio keeps going, and **cuts** (`(` `)`), ranges removed
+entirely so an asynchronous show joins up without the sofa shot; "play segment" previews both.
 Edits autosave to `work/review.json`; accepted rows land in `work/segments_reviewed.csv`,
 which `extract_clips.py --catalog work/segments_reviewed.csv` cuts into `clips/` with an
 `index.csv`.

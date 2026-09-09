@@ -2,13 +2,14 @@
 """Cut clips from your own episode files using start/end timestamps.
 
 Input is either a catalog CSV (season, episode, title columns) or work/segments_reviewed.csv
-from the review page (episode = SxxEyy, category, cutaways, note, holds). Only rows with both
+from the review page (episode = SxxEyy, category, cutaways, note, holds, cuts). Only rows with both
 `start` and `end` (HH:MM:SS[.ss] or MM:SS) are processed. Episode files are found by
 globbing for SxxEyy anywhere under --source. Writes <out>/index.csv describing every clip.
 
 `holds` ("a-b; a-b", absolute episode times): during each a..b the picture is frozen on the
 frame at b while the audio continues (I&S theme starting over the sofa; sofa cutaways in the
-middle of a cartoon). Forces a re-encode for that row.
+middle of a cartoon). `cuts` ("a-b; a-b"): video and audio removed, for cutaways where the
+show is asynchronous and joins up cleanly without them. Either forces a re-encode for that row.
 
 Usage:
   python scripts/extract_clips.py --source ~/Videos/Simpsons --out clips
@@ -31,33 +32,56 @@ def secs(h):
     p = [float(x) for x in h.split(":")]
     return p[0] * 3600 + p[1] * 60 + p[2] if len(p) == 3 else p[0] * 60 + p[1] if len(p) == 2 else p[0]
 
-def hold_filter(holds, start, end):
-    """ffmpeg filter graph freezing the picture over each a-b hold (times absolute), or ''.
-
-    The video is cut into pieces that each begin at a hold's end b and run to the next hold's
-    start; each piece is front-padded with clones of its first frame for the hold's length.
-    """
-    hs = []
-    for h in holds.split(";"):
+def ranges(txt, start, end):
+    """Parse 'a-b; a-b' (absolute times) into sorted (a, b) relative to start, clipped to the clip."""
+    out = []
+    for h in (txt or "").split(";"):
         if "-" not in h:
             continue
         a, b = (secs(x.strip()) for x in h.split("-", 1))
-        a, b = max(a, start) - start, min(b, end - 0.2) - start   # relative; keep a frame after b
+        a, b = max(a, start) - start, min(b, end) - start
         if b > a:
-            hs.append((a, b))
-    if not hs:
-        return ""
-    hs.sort()
+            out.append((a, b))
+    return sorted(out)
+
+def edit_filter(holds, cuts, start, end):
+    """ffmpeg filter graph applying cuts (drop video+audio) and holds (freeze picture), or ''.
+
+    Kept intervals are the complement of the cuts. Inside each kept interval the video is
+    split into pieces that begin at a hold's end b and run to the next hold's start; each is
+    front-padded with clones of its first frame for the hold's length. Audio is just the kept
+    intervals. Everything is concatenated into [v] and [a].
+    """
     dur = end - start
-    pieces, labels = [], []
-    if hs[0][0] > 0:
-        pieces.append(f"[0:v]trim=end={hs[0][0]:.3f},setpts=PTS-STARTPTS[p0]"); labels.append("[p0]")
-    for i, (a, b) in enumerate(hs):
-        nxt = hs[i + 1][0] if i + 1 < len(hs) else dur
-        k = len(labels)
-        pieces.append(f"[0:v]trim=start={b:.3f}:end={nxt:.3f},setpts=PTS-STARTPTS,"
-                      f"tpad=start_duration={b - a:.3f}:start_mode=clone[p{k}]"); labels.append(f"[p{k}]")
-    return ";".join(pieces) + f";{''.join(labels)}concat=n={len(labels)}:v=1:a=0[v]"
+    cs, hs = ranges(cuts, start, end), ranges(holds, start, end)
+    if not cs and not hs:
+        return ""
+    keep, t = [], 0.0
+    for a, b in cs:
+        if a > t:
+            keep.append((t, a))
+        t = max(t, b)
+    if dur > t:
+        keep.append((t, dur))
+    g, vl, al = [], [], []
+    for k0, k1 in keep:
+        al.append(f"[a{len(al)}]"); g.append(f"[0:a]atrim=start={k0:.3f}:end={k1:.3f},asetpts=PTS-STARTPTS{al[-1]}")
+        inner = [(max(a, k0), min(b, k1 - 0.2)) for a, b in hs if b > k0 and a < k1]
+        inner = [(a, b) for a, b in inner if b > a]
+        pos = k0
+        for i, (a, b) in enumerate(inner):
+            if a > pos:
+                vl.append(f"[v{len(vl)}]"); g.append(f"[0:v]trim=start={pos:.3f}:end={a:.3f},setpts=PTS-STARTPTS{vl[-1]}")
+            nxt = inner[i + 1][0] if i + 1 < len(inner) else k1
+            vl.append(f"[v{len(vl)}]")
+            g.append(f"[0:v]trim=start={b:.3f}:end={nxt:.3f},setpts=PTS-STARTPTS,"
+                     f"tpad=start_duration={b - a:.3f}:start_mode=clone{vl[-1]}")
+            pos = nxt
+        if pos < k1:
+            vl.append(f"[v{len(vl)}]"); g.append(f"[0:v]trim=start={pos:.3f}:end={k1:.3f},setpts=PTS-STARTPTS{vl[-1]}")
+    g.append(f"{''.join(vl)}concat=n={len(vl)}:v=1:a=0[v]")
+    g.append(f"{''.join(al)}concat=n={len(al)}:v=0:a=1[a]")
+    return ";".join(g)
 
 def norm(r):
     """Return (season, episode, label) for a catalog row or a reviewed-segments row."""
@@ -93,14 +117,14 @@ def main():
         dst = os.path.join(a.out, name)
         index.append(dict(file=name, id=r["id"], episode=f"S{season:02d}E{episode:02d}", category=label,
                           start=r["start"], end=r["end"], cutaways=r.get("cutaways", "0"), note=r.get("note", ""),
-                          holds=r.get("holds", "")))
+                          holds=r.get("holds", ""), cuts=r.get("cuts", "")))
         if os.path.exists(dst):
             continue
         cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
                "-ss", r["start"], "-t", f"{secs(r['end']) - secs(r['start']):.3f}", "-i", src]
-        fc = hold_filter(r.get("holds", ""), secs(r["start"]), secs(r["end"]))
+        fc = edit_filter(r.get("holds", ""), r.get("cuts", ""), secs(r["start"]), secs(r["end"]))
         if fc:
-            cmd += ["-filter_complex", fc, "-map", "[v]", "-map", "0:a?"]
+            cmd += ["-filter_complex", fc, "-map", "[v]", "-map", "[a]"]
         if a.precise or fc:
             cmd += ["-c:v", "libx264", "-crf", "20", "-preset", "fast", "-c:a", "aac", "-b:a", "128k"]
         else:

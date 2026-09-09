@@ -7,7 +7,8 @@ then open http://localhost:8765/ . The page (scripts/review.html) loads work/seg
 plays the episode file for each row (range requests, so seeking works), lets you step
 frames, set start/end, mark "holds" (a-b ranges where the picture freezes on the frame at b
 while the audio continues: the I&S theme starting over the sofa, sofa cutaways mid-cartoon),
-accept/reject, flag cutaways, and saves edits to work/review.json
+"cuts" (a-b ranges removed entirely, video and audio, where the show is asynchronous and joins
+up without the sofa shot), accept/reject, flag cutaways, and saves edits to work/review.json
 and a merged work/segments_reviewed.csv on every change.
 """
 import argparse, csv, glob, json, os, re, sys, threading
@@ -46,9 +47,10 @@ def write_reviewed(work):
         r["category"] = e.get("category") or r["category"]
         r["cutaways"] = "1" if e.get("cutaways") else "0"
         r["note"] = e.get("note", "")
+        r["cuts"] = e.get("cuts", "")
         r["holds"] = e.get("holds") or (f"{r['start']}-{e['video_from']}" if e.get("video_from") else "")
         out.append(r)
-    fields = list(rows[0].keys()) + ["cutaways", "note", "holds"] if rows else ["id"]
+    fields = list(rows[0].keys()) + ["cutaways", "note", "holds", "cuts"] if rows else ["id"]
     with open(os.path.join(work, "segments_reviewed.csv"), "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=fields)
         w.writeheader()
