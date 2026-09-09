@@ -4,7 +4,8 @@
 Input is either a catalog CSV (season, episode, title columns) or work/segments_reviewed.csv
 from the review page (episode = SxxEyy, category, cutaways, note, holds, cuts). Only rows with both
 `start` and `end` (HH:MM:SS[.ss] or MM:SS) are processed. Episode files are found by
-globbing for SxxEyy anywhere under --source. Writes <out>/index.csv describing every clip.
+globbing for SxxEyy anywhere under --source. Writes <out>/index.csv describing every clip
+(file,id,episode,category,start,end,dur,method,cutaways,note,holds,cuts); the player reads it.
 
 `holds` ("a-b; a-b", absolute episode times): during each a..b the picture is frozen on the
 frame at b while the audio continues (I&S theme starting over the sofa; sofa cutaways in the
@@ -115,8 +116,10 @@ def main():
             print(f"!! no file for S{season:02d}E{episode:02d} ({r['id']})"); continue
         name = f"S{season:02d}E{episode:02d}_{r['id']}_{safe(label)}.mp4"
         dst = os.path.join(a.out, name)
+        cut_len = sum(b - a for a, b in ranges(r.get("cuts", ""), secs(r["start"]), secs(r["end"])))
         index.append(dict(file=name, id=r["id"], episode=f"S{season:02d}E{episode:02d}", category=label,
-                          start=r["start"], end=r["end"], cutaways=r.get("cutaways", "0"), note=r.get("note", ""),
+                          start=r["start"], end=r["end"], dur=f"{secs(r['end']) - secs(r['start']) - cut_len:.3f}",
+                          method=r.get("method", ""), cutaways=r.get("cutaways", "0"), note=r.get("note", ""),
                           holds=r.get("holds", ""), cuts=r.get("cuts", "")))
         if os.path.exists(dst):
             continue

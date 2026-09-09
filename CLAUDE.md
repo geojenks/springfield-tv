@@ -10,8 +10,11 @@ scripts/fill_episode_numbers.py   fills `episode` via TVmaze API (run once)
 scripts/scan_episodes.py          finds candidate segments in episode files → work/candidates.csv + review.html
 scripts/extract_clips.py          ffmpeg cutter; takes a catalog CSV or work/segments_reviewed.csv, writes clips/index.csv
 scripts/review_server.py + review.html   review page with real video scrubbing (frame step, set start/end,
-                                  accept/reject, cutaways flag) -> work/review.json + work/segments_reviewed.csv
-player/index.html                 browser channel-hopper; drop clip files onto the screen
+                                  accept/reject, cutaways flag, holds, cuts) -> work/review.json + work/segments_reviewed.csv;
+                                  also serves /player/ and /clips/
+scripts/auto_cuts.py              frame-accurate bezel test per accepted row -> holds (leading audio) + cuts (sofa shots)
+player/index.html                 channel-hopper fed by clips/index.csv (channels per category + MIX + OUTLIERS,
+                                  wall-clock schedule, optional purple TV frame overlay); drop files still works
 refs/                             reference PNGs for hash matching (filename = label); empty so far
 ```
 No video in git. `clips/` and video extensions are gitignored.
@@ -63,8 +66,16 @@ Bumblebee Man, adverts, "we now return to" bumpers), for a channel-hopping simul
    seek-over for cuts). Autosaves to
    `work/review.json`; accepted rows are merged into `work/segments_reviewed.csv`.
    `segments.html` (static, tick + export) still exists but the server page supersedes it.
+   `python scripts/auto_cuts.py --source <eps> [--all] [--force] [--ids ...]` fills holds/cuts for accepted
+   bezel rows from a per-frame bezel test (matches hand cuts to ~0.1–0.3 s; a segment that goes
+   full-screen mid-way gets a wrong trailing cut, e.g. S05E10 Kent, so review afterwards). Skips rows
+   that already have holds/cuts unless --force; reload the review page after running it.
 4. `python scripts/extract_clips.py --source <eps> --catalog work/segments_reviewed.csv --precise`
-   → `clips/S05E07_<id>_<category>.mp4` + `clips/index.csv` (carries cutaways, note, holds, cuts).
+   → `clips/S05E07_<id>_<category>.mp4` + `clips/index.csv` (carries dur, method, cutaways, note, holds, cuts).
+5. Player: http://localhost:8765/player/ (or `python -m http.server` at repo root → /player/). Channels =
+   one per category + MIX (all, shuffled per day) + OUTLIERS (cutaways=1). Dial / ↑↓ = channel, ◀▶ / ←→ =
+   clip, each channel runs on a shared wall clock (EPOCH 2026-01-01) so a switch lands mid-programme.
+   FRAME button (`f`): auto draws the purple in-show TV frame over clips whose method isn't `bezel`.
    Rows with holds/cuts are re-encoded (`edit_filter`: trim pieces + tpad clone + concat) even
    without `--precise`.
 
@@ -84,7 +95,7 @@ the whole span and flag `cutaways=1`. The player can route flagged clips to thei
 3. Wikisimpsons `Category:TV shows` and `List of Troy McClure media` give titles but no episode
    or timing; resolve each title against `work/subs` to build the other catalog CSVs.
 4. LLM pass over transcript windows for unnamed adverts/shows.
-5. Player: each channel on a wall clock so switching lands mid-programme.
+5. Player: done (wall clock). Next: fit real bezel proportions/colour from a bezel frame; Pi build.
 
 ## Conventions
 - Episode files matched by `SxxEyy` anywhere in filename.

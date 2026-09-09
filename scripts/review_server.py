@@ -3,7 +3,8 @@
 
   python scripts/review_server.py --source <episodes dir> [--work work] [--port 8765]
 
-then open http://localhost:8765/ . The page (scripts/review.html) loads work/segments.csv,
+then open http://localhost:8765/ (review) or http://localhost:8765/player/ (the channel-hopping
+player, fed by clips/index.csv). The page (scripts/review.html) loads work/segments.csv,
 plays the episode file for each row (range requests, so seeking works), lets you step
 frames, set start/end, mark "holds" (a-b ranges where the picture freezes on the frame at b
 while the audio continues: the I&S theme starting over the sofa, sofa cutaways mid-cartoon),
@@ -60,6 +61,7 @@ def write_reviewed(work):
 
 class Handler(SimpleHTTPRequestHandler):
     work = "work"
+    clips = "clips"
     vids = {}
 
     def log_message(self, *a):
@@ -76,6 +78,13 @@ class Handler(SimpleHTTPRequestHandler):
             if not os.path.exists(fp):
                 return self.send_error(404)
             return self.send_file(fp, self.guess_type(fp))
+        if path in ("/player", "/player/"):
+            return self.send_file(os.path.join(HERE, "..", "player", "index.html"), "text/html; charset=utf-8")
+        if path.startswith("/clips/"):
+            fp = os.path.normpath(os.path.join(self.clips, path[7:].lstrip("/")))
+            if not os.path.abspath(fp).startswith(os.path.abspath(self.clips)) or not os.path.isfile(fp):
+                return self.send_error(404)
+            return self.send_file(fp, "video/mp4" if fp.endswith(".mp4") else self.guess_type(fp))
         if path.startswith("/video/"):
             tag = path[7:].upper()[:6]
             if tag not in self.vids:
@@ -140,9 +149,11 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--source", required=True)
     ap.add_argument("--work", default="work")
+    ap.add_argument("--clips", default="clips", help="extracted clips dir, served at /clips/ for /player/")
     ap.add_argument("--port", type=int, default=8765)
     a = ap.parse_args()
     Handler.work = a.work
+    Handler.clips = a.clips
     Handler.vids = find_videos(a.source)
     print(f"{len(Handler.vids)} episode files; serving {a.work} at http://localhost:{a.port}/")
     ThreadingHTTPServer(("127.0.0.1", a.port), Handler).serve_forever()

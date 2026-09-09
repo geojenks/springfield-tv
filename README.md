@@ -81,3 +81,11 @@ entirely so an asynchronous show joins up without the sofa shot; "play segment" 
 Edits autosave to `work/review.json`; accepted rows land in `work/segments_reviewed.csv`,
 which `extract_clips.py --catalog work/segments_reviewed.csv` cuts into `clips/` with an
 `index.csv`.
+
+`python scripts/auto_cuts.py --source /path/to/episodes` fills holds and cuts automatically for accepted
+rows with the purple bezel, from a frame-by-frame bezel test (leading sofa audio becomes a hold, interior
+sofa shots become cuts). Check the result on the review page and delete any cut that is wrong.
+
+Then open http://localhost:8765/player/ : one channel per category plus MIX and OUTLIERS, each running on
+a wall clock so changing channel lands mid-programme; the FRAME button draws the in-show purple TV frame
+over clips that were shot full-screen.
