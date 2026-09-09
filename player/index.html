@@ -165,7 +165,12 @@ function play(i, offset) {
   const chan = channels[ch]; cur = i;
   flashStatic(() => {
     const c = chan.order[cur];
-    video.src = c.url; video.currentTime = offset || 0; video.play().catch(() => {});
+    video.src = c.url;
+    video.onloadedmetadata = () => {                              // seek only once the duration is known
+      const off = offset || 0;
+      video.currentTime = off < video.duration - 1 ? off : 0;
+      video.play().catch(() => {});
+    };
     applyFrame(c);
     osdCh.textContent = `CH ${ch + 1} ${chan.name}`;
     osdName.textContent = (c.name || '').slice(0, 26);
@@ -186,7 +191,7 @@ function flashStatic(done) {
     const img = ctx.createImageData(160, 120), d = img.data;
     for (let i = 0; i < d.length; i += 4) { const v = Math.random() * 255 | 0; d[i] = d[i + 1] = d[i + 2] = v; d[i + 3] = 255; }
     ctx.putImageData(img, 0, 0);
-    if (++frames < 8) requestAnimationFrame(draw); else { noise.style.display = 'none'; done(); }
+    if (++frames < 8) setTimeout(draw, 40); else { noise.style.display = 'none'; done(); }   // timer, not rAF: still completes in a background tab
   })();
 }
 
