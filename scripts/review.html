@@ -157,7 +157,7 @@ async function playSeg() {
   const loop = () => {
     if (!open || open.v !== v || run2 !== holdRun) { hc.style.display = 'none'; return; }
     const t = v.currentTime, c = cuts.find(x => t >= x[0] && t < x[1]);
-    if (c) { v.currentTime = c[1]; requestAnimationFrame(loop); return; }      // skip the cut
+    if (c) { if (!v.seeking) v.currentTime = c[1] + 0.05; requestAnimationFrame(loop); return; }   // skip the cut (land just past b: seeks snap to the frame before)
     const i = holds.findIndex(h => t >= h[0] && t < h[1]);
     if (i >= 0) { hc.getContext('2d').drawImage(frames[i], 0, 0); hc.style.display = 'block'; } else hc.style.display = 'none';
     if (t >= e || v.paused) { v.pause(); pp.textContent = 'play'; hc.style.display = 'none'; return; }
