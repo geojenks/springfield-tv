@@ -65,3 +65,16 @@ is how season 1 (no sung I&S title yet) gets found. It writes `work/segments.csv
 `work/segments.html`, a review page with the frames just inside and outside each cut and a
 button that exports the ticked rows as CSV for the catalog. The `screen_spans` column lists the
 on-screen sub-runs inside a segment; the gaps are cutaways to the sofa.
+
+To check the cuts against the actual video:
+
+```
+python scripts/review_server.py --source /path/to/episodes      # then open http://localhost:8765/
+```
+
+Each row gets a player for its episode with frame-step and second-step buttons, "set start/end =
+here", accept/reject, a cutaways flag (the camera goes back to the sofa while the TV audio carries
+on; those clips are kept whole and flagged so the player can treat them as their own channel) and a
+note. Edits autosave to `work/review.json`; accepted rows land in `work/segments_reviewed.csv`,
+which `extract_clips.py --catalog work/segments_reviewed.csv` cuts into `clips/` with an
+`index.csv`.

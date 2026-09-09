@@ -8,7 +8,9 @@ A small physical CRT-style TV that plays the TV-within-the-show clips from *The 
 catalog/itchy_scratchy.csv   120 I&S shorts, Ullman shorts → S36. start/end columns are EMPTY.
 scripts/fill_episode_numbers.py   fills `episode` via TVmaze API (run once)
 scripts/scan_episodes.py          finds candidate segments in episode files → work/candidates.csv + review.html
-scripts/extract_clips.py          ffmpeg cutter driven by catalog rows that have start/end
+scripts/extract_clips.py          ffmpeg cutter; takes a catalog CSV or work/segments_reviewed.csv, writes clips/index.csv
+scripts/review_server.py + review.html   review page with real video scrubbing (frame step, set start/end,
+                                  accept/reject, cutaways flag) -> work/review.json + work/segments_reviewed.csv
 player/index.html                 browser channel-hopper; drop clip files onto the screen
 refs/                             reference PNGs for hash matching (filename = label); empty so far
 ```
@@ -50,13 +52,23 @@ Bumblebee Man, adverts, "we now return to" bumpers), for a channel-hopping simul
      to be spliced out at extraction time (extract_clips does not do this yet).
    - overlapping rows from different anchors are merged (`category` joined with `+`).
    - `refs/*.png` dHash pulls the start back to a title card if one sits ≤ 10 s before the run.
-3. Human ticks rows in `segments.html`, exports CSV, pastes into the catalog; `extract_clips.py`.
+3. `python scripts/review_server.py --source <eps>` → http://localhost:8765/ . Each row plays the
+   episode file (range requests), frame-step / ±1 s / ±5 s, "set start/end = here", accept/reject,
+   category edit, **cutaways** flag (prefilled when `screen_spans` has gaps), note. Autosaves to
+   `work/review.json`; accepted rows are merged into `work/segments_reviewed.csv`.
+   `segments.html` (static, tick + export) still exists but the server page supersedes it.
+4. `python scripts/extract_clips.py --source <eps> --catalog work/segments_reviewed.csv --precise`
+   → `clips/S05E07_<id>_<category>.mp4` + `clips/index.csv` (carries cutaways + note).
+
+Cutaways policy (user decision): do NOT splice out sofa shots while the TV audio continues; keep
+the whole span and flag `cutaways=1`. The player can route flagged clips to their own channel.
 
 `scan_episodes.py` (yellow-only scan, ~1 in 5 precision) is superseded; kept for its helpers.
 
 ## Known gaps / next steps
-1. `extract_clips.py` should honour `screen_spans` (concat the on-screen sub-runs, drop cutaways).
-   TV-in-shot segments where the set is small in frame (S01E04 8:58) are not worth extracting.
+1. TV-in-shot segments where the set is small in frame (S01E04 8:58) are not worth extracting.
+   Mask runs sometimes start a few seconds late when the opening shot is a dim TV frame
+   (S05E07 8:42 → really 8:40); the review page is where that gets fixed.
 2. Full-screen shots with no mask: tried CLIP ViT-B/32 kNN against bezel-confirmed frames
    (torch cu121 + open_clip installed): no separation, window max below background p99. Not
    pursued; needs a different idea (audio? per-scene shot matching) or eyes.
