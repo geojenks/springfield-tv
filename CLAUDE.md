@@ -101,4 +101,5 @@ the whole span and flag `cutaways=1`. The player can route flagged clips to thei
 - Episode files matched by `SxxEyy` anywhere in filename.
 - Timestamps `HH:MM:SS` or `MM:SS`; pad ~1 s each side for keyframe cuts.
 - Keep scripts dependency-light (stdlib + numpy + Pillow); ffmpeg on PATH.
-- Player design is an original retro CRT, not a copy of the show's set.
+- Player chassis is styled after the in-show purple set (bezel colour #4a3e69 measured from bezel frames, so
+  bezel clips blend into it); knobs: channel (click/↑↓) and volume (click/wheel/drag, keys - =).

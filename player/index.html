@@ -6,8 +6,9 @@
 <title>Springfield TV</title>
 <style>
   :root{
-    --walnut:#5a3a22; --walnut-dark:#3b2414; --cream:#e9dcb8; --phosphor:#0b0f0c;
-    --brass:#c9a44c; --mustard:#d9a32b; --ink:#1a120c; --tvpurple:#372658;
+    /* the in-show set: a purple box with a bulging screen, two knobs, ridged speaker (S05E02 8:20) */
+    --tv:#4a3e69; --tv-light:#6a5b8e; --tv-dark:#352b4d; --ink:#1e1630; --knob:#8c7fa8; --knob-dark:#5e5280;
+    --phosphor:#0b0f0c; --mustard:#d9a32b; --cream:#e9dcb8; --tvpurple:#4a3e69;
   }
   *{box-sizing:border-box}
   html,body{margin:0;height:100%;background:radial-gradient(circle at 50% 30%,#2e2a2a,#151212 70%);
@@ -15,28 +16,34 @@
   body{display:flex;align-items:center;justify-content:center;padding:16px}
 
   .tv{position:relative;width:min(94vw,720px);aspect-ratio:4/3;
-    background:linear-gradient(160deg,#6b4629,var(--walnut) 40%,var(--walnut-dark));
-    border:6px solid var(--ink);border-radius:28px 28px 22px 22px;
-    box-shadow:0 30px 60px #000a,inset 0 4px 0 #8a5c36,inset 0 -6px 0 #24150a;
-    display:grid;grid-template-columns:1fr 22%;gap:0;padding:5%}
+    background:linear-gradient(160deg,var(--tv-light),var(--tv) 45%,var(--tv-dark));
+    border:5px solid var(--ink);border-radius:22px;
+    box-shadow:0 30px 60px #000a,inset 0 3px 0 #8a7bad,inset 0 -5px 0 #2a2140;
+    display:grid;grid-template-columns:1fr 22%;gap:0;padding:4.5% 4% 5% 4.5%}
   .tv::before,.tv::after{content:"";position:absolute;top:-38%;width:6px;height:40%;
     background:linear-gradient(#ddd,#666);border:3px solid var(--ink);border-radius:4px;
     transform-origin:bottom center}
   .tv::before{left:42%;transform:rotate(-28deg)}
   .tv::after{left:52%;transform:rotate(24deg)}
+  .foot{position:absolute;bottom:-14px;width:12%;height:14px;background:var(--tv-dark);
+    border:4px solid var(--ink);border-top:0;border-radius:0 0 6px 6px}
+  .foot.l{left:12%} .foot.r{right:12%}
 
-  .bezel{position:relative;background:var(--cream);border:5px solid var(--ink);border-radius:18px;
-    padding:6%;box-shadow:inset 0 0 0 6px #d3c39b}
+  /* the bezel is the same purple as the picture border in bezel clips, so those blend straight in */
+  .bezel{position:relative;background:linear-gradient(160deg,#5a4d7c,var(--tv) 60%,#3f3460);
+    border:4px solid var(--ink);border-radius:16px;padding:3.5% 3%;
+    box-shadow:inset 0 0 0 2px #6a5b8e55,inset 0 6px 14px #0004}
   .screen{position:relative;width:100%;height:100%;background:var(--phosphor);
-    border:4px solid var(--ink);border-radius:40px/32px;overflow:hidden;
-    box-shadow:inset 0 0 60px #000}
+    border:3px solid #2a2040;border-radius:9%/11%;overflow:hidden;
+    box-shadow:inset 0 0 40px #000,0 0 0 1px #7d6fa0}
   .screen::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:3;
     background:repeating-linear-gradient(0deg,#0000 0 2px,#0004 2px 3px),
       radial-gradient(ellipse at center,#fff0 55%,#0009 100%)}
   video{width:100%;height:100%;object-fit:cover;display:block}
-  /* the in-show purple TV frame, drawn over clips that were shot full-screen */
-  .frame{position:absolute;inset:5% 4%;border-radius:14px/12px;pointer-events:none;display:none;z-index:1;
-    box-shadow:0 0 0 400px var(--tvpurple),inset 0 0 0 3px #4a3570,inset 0 0 18px #0008}
+  /* the in-show purple TV frame, drawn over clips that were shot full-screen: measured on a
+     bezel frame the picture fills x 0-98%, y 4-97% with ~5% corner radius, so the ring is thin */
+  .frame{position:absolute;inset:3.5% 2.5%;border-radius:6%/8%;pointer-events:none;display:none;z-index:1;
+    box-shadow:0 0 0 400px var(--tvpurple),inset 0 0 0 2px #3a2f52,inset 0 0 14px #0006}
   .frame.show{display:block}
   canvas.noise{position:absolute;inset:0;width:100%;height:100%;display:none;z-index:2}
   .osd{position:absolute;top:10px;left:14px;right:14px;display:flex;justify-content:space-between;
@@ -48,26 +55,31 @@
   .empty b{font-size:1.5em;letter-spacing:.15em}
   .empty small{opacity:.7}
 
-  .panel{display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:0 0 0 6%}
-  .dial{width:70%;aspect-ratio:1;border-radius:50%;border:4px solid var(--ink);
-    background:radial-gradient(circle at 35% 35%,#f0d27a,var(--brass) 55%,#8a6a25);
-    position:relative;cursor:pointer;transition:transform .25s cubic-bezier(.3,1.6,.6,1);
-    box-shadow:0 4px 0 var(--ink)}
-  .dial::after{content:"";position:absolute;left:50%;top:6%;width:10%;height:38%;
+  .panel{display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:0 0 0 7%}
+  .knobwrap{display:flex;flex-direction:column;align-items:center;width:100%}
+  .dial{width:72%;aspect-ratio:1;border-radius:50%;border:4px solid var(--ink);position:relative;cursor:pointer;
+    background:radial-gradient(circle at 35% 35%,#b3a7cc,var(--knob) 55%,var(--knob-dark));
+    box-shadow:0 4px 0 var(--ink),inset 0 -3px 6px #0004;touch-action:none;top:0}
+  .dial.small{width:50%}
+  /* the pointer is a child so rotation and the press effect never fight (that is what made it "resize") */
+  .dial .knob{position:absolute;inset:0;transition:transform .25s cubic-bezier(.3,1.6,.6,1)}
+  .dial .knob::after{content:"";position:absolute;left:50%;top:8%;width:11%;height:36%;
     background:var(--ink);border-radius:3px;transform:translateX(-50%)}
-  .label{font-size:clamp(8px,1.4vw,11px);letter-spacing:.2em;color:var(--cream);opacity:.8;margin-top:6px;text-align:center}
+  .dial:active{box-shadow:0 1px 0 var(--ink),inset 0 -3px 6px #0004;top:3px}
+  .label{font-size:clamp(8px,1.4vw,11px);letter-spacing:.2em;color:var(--cream);opacity:.8;margin-top:6px;text-align:center;
+    height:2.6em;overflow:hidden;line-height:1.3}   /* fixed height so a long channel name does not shove the knobs about */
   .row{display:flex;gap:10%;width:100%;justify-content:center}
-  .btn{width:34%;aspect-ratio:1;border-radius:50%;border:4px solid var(--ink);background:var(--mustard);
+  .btn{width:34%;aspect-ratio:1;border-radius:50%;border:4px solid var(--ink);background:var(--knob);
     box-shadow:0 4px 0 var(--ink);cursor:pointer;font:bold clamp(9px,1.6vw,13px) inherit;color:var(--ink);
     display:flex;align-items:center;justify-content:center;padding:0}
-  .btn.wide{width:60%;aspect-ratio:auto;border-radius:12px;padding:6px 4px}
-  .btn:active,.dial:active{transform:translateY(3px);box-shadow:0 1px 0 var(--ink)}
-  .btn.on{background:#ff6b3d}
+  .btn.wide{width:66%;aspect-ratio:auto;border-radius:12px;padding:6px 4px}
+  .btn:active{transform:translateY(3px);box-shadow:0 1px 0 var(--ink)}
+  .btn.on{background:var(--mustard)}
   .btn:focus-visible,.dial:focus-visible{outline:3px solid #7cff6b;outline-offset:3px}
-  .speaker{width:80%;height:12%;background:repeating-linear-gradient(90deg,var(--ink) 0 3px,#0000 3px 8px);
-    border-radius:4px;opacity:.7}
+  .speaker{width:86%;height:11%;background:repeating-linear-gradient(0deg,var(--ink) 0 3px,#0000 3px 9px);
+    border-radius:4px;opacity:.75}
   input[type=file]{display:none}
-  @media (prefers-reduced-motion:reduce){.dial{transition:none}}
+  @media (prefers-reduced-motion:reduce){.dial .knob{transition:none}}
 </style>
 </head>
 <body>
@@ -86,9 +98,13 @@
     </div>
   </div>
   <div class="panel">
-    <div>
-      <div class="dial" id="dial" tabindex="0" role="button" aria-label="Next channel"></div>
+    <div class="knobwrap">
+      <div class="dial" id="dial" tabindex="0" role="button" aria-label="Next channel"><div class="knob" id="chKnob"></div></div>
       <div class="label" id="chLabel">CHANNEL</div>
+    </div>
+    <div class="knobwrap">
+      <div class="dial small" id="vol" tabindex="0" role="slider" aria-label="Volume" aria-valuemin="0" aria-valuemax="100" title="click / wheel / drag; keys - ="><div class="knob" id="volKnob"></div></div>
+      <div class="label" id="volLabel">VOLUME</div>
     </div>
     <div class="row">
       <button class="btn" id="prev" aria-label="Previous clip">◀</button>
@@ -98,6 +114,7 @@
     <div class="row"><button class="btn wide" id="frameBtn" title="purple TV frame: auto / on / off">FRAME: AUTO</button></div>
     <div class="speaker"></div>
   </div>
+  <div class="foot l"></div><div class="foot r"></div>
 </div>
 <input type="file" id="picker" accept="video/*" multiple>
 
@@ -108,7 +125,7 @@
 // Dropping files on the screen still works and makes a single FILES channel.
 const $ = id => document.getElementById(id);
 const video = $('video'), noise = $('noise'), osd = $('osd'), osdCh = $('osdCh'), osdName = $('osdName'),
-      empty = $('empty'), picker = $('picker'), dial = $('dial'), shuffleBtn = $('shuffle'),
+      empty = $('empty'), picker = $('picker'), dial = $('dial'), chKnob = $('chKnob'), vol = $('vol'), volKnob = $('volKnob'), volLabel = $('volLabel'), shuffleBtn = $('shuffle'),
       frameBtn = $('frameBtn'), frame = $('frame'), screen = $('screen'), chLabel = $('chLabel');
 
 const NAMES = { itchy_scratchy: 'ITCHY & SCRATCHY', kent_brockman: 'CHANNEL 6 NEWS', troy_mcclure: 'TROY McCLURE',
@@ -156,7 +173,7 @@ function nowIn(chan) {                                           // (clip index,
 function tune(dir) {
   if (!channels.length) return;
   ch = (ch + dir + channels.length) % channels.length;
-  dialAngle += dir * 30; dial.style.transform = `rotate(${dialAngle}deg)`;
+  dialAngle += dir * 30; chKnob.style.transform = `rotate(${dialAngle}deg)`;
   chLabel.textContent = channels[ch].name;
   const [i, off] = nowIn(channels[ch]);
   play(i, off);
@@ -218,6 +235,30 @@ video.addEventListener('ended', () => step(1));
 $('next').onclick = () => step(1);
 $('prev').onclick = () => step(-1);
 dial.onclick = () => tune(1);
+
+// volume knob: click = +10% (wraps), wheel or drag = fine, keys - and =. Sweeps 270 degrees.
+let volume = 0.8, volDragged = false, volY = null, volStart = 0;
+try { volume = Math.min(1, Math.max(0, parseFloat(localStorage.getItem('stv-vol') ?? '0.8'))); } catch (e) {}
+function setVolume(v, show = true) {
+  volume = Math.min(1, Math.max(0, v)); video.volume = volume; video.muted = volume === 0;
+  volKnob.style.transform = `rotate(${-135 + volume * 270}deg)`;
+  vol.setAttribute('aria-valuenow', Math.round(volume * 100));
+  try { localStorage.setItem('stv-vol', volume.toFixed(2)); } catch (e) {}
+  if (!show) return;
+  const n = Math.round(volume * 10);
+  volLabel.textContent = 'VOL ' + n;
+  osdName.textContent = '\u25ae'.repeat(n) + '\u25af'.repeat(10 - n);
+  osd.classList.add('show'); clearTimeout(osdTimer);
+  osdTimer = setTimeout(() => { osd.classList.remove('show'); volLabel.textContent = 'VOLUME'; }, 2000);
+}
+vol.onclick = () => { if (!volDragged) setVolume(volume >= 0.99 ? 0 : Math.floor(volume * 10 + 1) / 10); volDragged = false; };
+vol.onkeydown = e => { if (e.key === 'ArrowUp' || e.key === 'ArrowRight') { e.preventDefault(); e.stopPropagation(); setVolume(volume + 0.1); }
+  else if (e.key === 'ArrowDown' || e.key === 'ArrowLeft') { e.preventDefault(); e.stopPropagation(); setVolume(volume - 0.1); } };
+vol.addEventListener('wheel', e => { e.preventDefault(); setVolume(volume - Math.sign(e.deltaY) * 0.05); }, { passive: false });
+vol.addEventListener('pointerdown', e => { volY = e.clientY; volStart = volume; vol.setPointerCapture(e.pointerId); });
+vol.addEventListener('pointermove', e => { if (volY === null) return; const d = (volY - e.clientY) / 150; if (Math.abs(d) > 0.03) { volDragged = true; setVolume(volStart + d); } });
+vol.addEventListener('pointerup', () => volY = null);
+setVolume(volume, false);
 dial.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tune(1); } };
 shuffleBtn.onclick = () => { shuffle = !shuffle; shuffleBtn.classList.toggle('on', shuffle); if (channels.length) { const c = channels[ch].clips; buildChannels(channels.find(x => x.mix).clips); tune(0); } };
 frameBtn.onclick = () => { frameMode = { auto: 'on', on: 'off', off: 'auto' }[frameMode]; frameBtn.textContent = 'FRAME: ' + frameMode.toUpperCase(); if (ch >= 0) applyFrame(channels[ch].order[cur]); };
@@ -229,6 +270,8 @@ document.addEventListener('keydown', e => {
   else if (e.key === 'ArrowUp') tune(1);
   else if (e.key === 'ArrowDown') tune(-1);
   else if (e.key === 'f') frameBtn.click();
+  else if (e.key === '-' || e.key === '_') setVolume(volume - 0.1);
+  else if (e.key === '=' || e.key === '+') setVolume(volume + 0.1);
   else if (e.key === ' ' && ch >= 0) { e.preventDefault(); video.paused ? video.play() : video.pause(); }
 });
 let sx = null;
