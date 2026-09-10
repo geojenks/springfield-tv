@@ -6,6 +6,7 @@
   .shot.on { background: #2a5; color: #fff; border-color: #6d8 }
   .shot.hold { background: #a70; color: #fff; border-color: #db6 }
   .preview { max-width: 480px; display: block; margin: 4px 0; background: #000 }
+  .render { margin-top: 10px } .render button { font: 13px system-ui; padding: 5px 8px; margin: 2px 0; background: #333; color: #ddd; border: 1px solid #555; border-radius: 4px; cursor: pointer }
 body{font:13px system-ui;background:#111;color:#ddd;margin:0;padding:0 12px 60px}
 .hdr{position:sticky;top:0;background:#111;padding:8px 0;z-index:2;border-bottom:1px solid #333;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .hdr input,.hdr select{background:#222;color:#ddd;border:1px solid #444;padding:4px}
@@ -126,7 +127,10 @@ function toggle(id, at) {
     d.classList.add('open');
     const p = d.querySelector('.panel');
     p.innerHTML = `<div><div class=vwrap><video preload="metadata" src="/video/${r.episode}"></video><canvas class=hold id=hc width=480 height=360></canvas></div>
-      <div class=big id=tc>--:--:--.--</div></div>
+      <div class=big id=tc>--:--:--.--</div>
+      <div class=render><span class=lab>rendered result (start/end/holds/cuts applied, exactly what extract_clips will make; ▶ play segment is only an approximation)</span>
+        <button id=rr onclick="rerender()">${(edits[id] || {}).preview ? '↻ re-render with current edits' : '⚙ render clip'}</button>
+        ${(edits[id] || {}).preview ? '<video class=preview controls preload=none id=pv src="/work/preview/' + id + '.mp4?' + Date.now() + '"></video>' : ''}</div></div>
       <div class=ctl>
         <div class=row>start <input type=text id=es value="${cur(r, 'start')}"> <button onclick="go(sec(es.value))">go</button> <button onclick="setHere('start')">[ set start = here</button>
           &nbsp; end <input type=text id=ee value="${cur(r, 'end')}"> <button onclick="go(sec(ee.value))">go</button> <button onclick="setHere('end')">] set end = here</button></div>
@@ -142,9 +146,6 @@ function toggle(id, at) {
           &nbsp; <button onclick="keepCuts()" title="k">✓ keep cuts (k)</button> <button onclick="undoCuts()" title="u">undo all cuts → whole clip (u)</button>${(edits[id] || {}).prev_holds != null ? ' <button onclick="revertCuts()" title="r">revert to my edit (r)</button>' : ''}</div>
         ${(edits[id] || {}).shots ? '<div class=row><span class=lab>shots (vision_cuts.py; green = programme, amber = room but programme audio → frozen, grey = room → cut/trimmed; click = go to first frame, then ( ) { } as usual):</span><br>' +
           edits[id].shots.map((h, i) => `<button class="shot ${h[2] === 1 ? 'on' : h[2] === 2 ? 'hold' : 'off'}" title="${hms(h[0])} → ${hms(h[1])}" onclick="go(${h[0]})">${i + 1}</button>`).join('') + ' <a href="/work/vision/' + id + '.jpg" target=_blank class=lab>sheet</a></div>' : ''}
-        <div class=row><span class=lab>rendered result (start/end/holds/cuts applied, exactly what extract_clips will make; ▶ play segment is only an approximation):</span>
-          <button id=rr onclick="rerender()">${(edits[id] || {}).preview ? '↻ re-render with current edits' : '⚙ render clip'}</button>
-          ${(edits[id] || {}).preview ? '<video class=preview controls preload=none id=pv src="/work/preview/' + id + '.mp4?' + Date.now() + '"></video>' : ''}</div>
         <div class=row><button onclick="step(-5)">−5 s</button><button onclick="step(-1)">−1 s</button><button onclick="step(-1/FPS)">−1 f</button>
           <button id=pp onclick="playPause()">play</button>
           <button onclick="step(1/FPS)">+1 f</button><button onclick="step(1)">+1 s</button><button onclick="step(5)">+5 s</button>
