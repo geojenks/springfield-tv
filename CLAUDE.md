@@ -69,7 +69,10 @@ Bumblebee Man, adverts, "we now return to" bumpers), for a channel-hopping simul
    `python scripts/auto_cuts.py --source <eps> [--all] [--force] [--ids ...]` fills holds/cuts for accepted
    bezel rows from a per-frame bezel test (matches hand cuts to ~0.1–0.3 s; a segment that goes
    full-screen mid-way gets a wrong trailing cut, e.g. S05E10 Kent, so review afterwards). Skips rows
-   that already have holds/cuts unless --force; reload the review page after running it.
+   that already have holds/cuts unless --force, and rows under 50% bezel (--min-frac); `--todo` also does
+   unreviewed bezel rows so they open with cuts prefilled. Touched rows get `auto_cuts=true`: the review
+   page filter "auto-cut, to check" lists them, `k` keeps, `u` undoes every hold/cut (whole clip).
+   Reload the review page after running it (the page posts only rows it edited, server merges per row).
 4. `python scripts/extract_clips.py --source <eps> --catalog work/segments_reviewed.csv --precise`
    → `clips/S05E07_<id>_<category>.mp4` + `clips/index.csv` (carries dur, method, cutaways, note, holds, cuts).
 5. Player: http://localhost:8765/player/ (or `python -m http.server` at repo root → /player/). Channels =

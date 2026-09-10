@@ -15,7 +15,11 @@ work/review.json (rows that already have holds or cuts are left alone unless --f
 gets auto_cuts=true) and work/segments_reviewed.csv is rebuilt. RELOAD the review page
 afterwards: an open tab still holds the old edits and would save over these.
 
-  python scripts/auto_cuts.py --source <eps> [--work work] [--all] [--force] [--min-gap 4] [--ids ID ...]
+  python scripts/auto_cuts.py --source <eps> [--work work] [--all] [--force] [--min-gap 4] [--min-frac 0.5] [--todo] [--ids ID ...]
+
+Rows where fewer than --min-frac of the frames pass the bezel test are skipped (a full-screen
+programme would otherwise get most of itself cut). On the review page the "auto-cut, to check"
+status filter lists the rows this touched; "keep cuts" (k) or "undo all cuts" (u) clears the flag.
 """
 import argparse, csv, json, os, subprocess, sys
 import numpy as np
@@ -98,12 +102,24 @@ def main():
     ap.add_argument("--force", action="store_true", help="overwrite existing holds/cuts")
     ap.add_argument("--min-gap", type=int, default=4, help="ignore runs shorter than this many frames")
     ap.add_argument("--ids", nargs="*", help="only these segment ids")
+    ap.add_argument("--min-frac", type=float, default=0.5,
+                    help="skip a row unless at least this fraction of its frames pass the bezel test")
+    ap.add_argument("--todo", action="store_true",
+                    help="also unreviewed rows from work/segments.csv, so a fresh row opens with its cuts prefilled")
     ap.add_argument("--dry-run", action="store_true")
     a = ap.parse_args()
 
     rp = os.path.join(a.work, "review.json")
     edits = json.load(open(rp, encoding="utf-8")) if os.path.exists(rp) else {}
     rows = list(csv.DictReader(open(os.path.join(a.work, "segments_reviewed.csv"), encoding="utf-8")))
+    if a.todo:
+        seen = {r["id"] for r in rows}
+        for r in csv.DictReader(open(os.path.join(a.work, "segments.csv"), encoding="utf-8")):
+            e = edits.get(r["id"], {})
+            if r["id"] in seen or e.get("status") == "reject":
+                continue
+            r = dict(r, start=e.get("start") or r["start"], end=e.get("end") or r["end"])
+            rows.append(r)
     fps_cache, changed = {}, 0
     for r in rows:
         if a.ids and r["id"] not in a.ids:
@@ -122,8 +138,10 @@ def main():
         bz = despeckle(bezel_flags(fr), a.min_gap)
         holds, cuts = auto_edit(bz, start, fps)
         frac = bz.mean() if len(bz) else 0
-        if holds is None:
-            print(f"-- {r['id']}: no bezel frames at all ({len(fr)} frames), skipped"); continue
+        if holds is None or frac < a.min_frac:
+            print(f"-- {r['id']}: only {frac:.0%} bezel frames ({len(fr)} frames), skipped"); continue
+        if not holds and not cuts:
+            print(f"-- {r['id']}: {frac:.0%} bezel, nothing to cut"); continue
         print(f"{r['id']}: {len(fr)} frames, {frac:.0%} bezel; holds [{holds}] cuts [{cuts}]")
         if a.dry_run:
             continue
