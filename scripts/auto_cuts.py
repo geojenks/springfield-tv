@@ -11,8 +11,9 @@ bezel cue frame by frame (find_segments.bezel_flags). Then:
   * frames after the last bezel frame   -> a cut to `end`
 
 Runs shorter than --min-gap frames (either way) are ignored as flicker. Results are written to
-work/review.json (rows that already have holds or cuts are left alone unless --force; the row
-gets auto_cuts=true) and work/segments_reviewed.csv is rebuilt. RELOAD the review page
+work/review.json (rows with hand-made holds or cuts are left alone unless --force, which stashes
+the hand edit in prev_holds/prev_cuts so the review page can revert to it; the row gets
+auto_cuts=true and auto_frac = fraction of bezel frames) and work/segments_reviewed.csv is rebuilt. RELOAD the review page
 afterwards: an open tab still holds the old edits and would save over these.
 
   python scripts/auto_cuts.py --source <eps> [--work work] [--all] [--force] [--min-gap 4] [--min-frac 0.5] [--todo] [--ids ID ...]
@@ -127,7 +128,8 @@ def main():
         if not a.all and r.get("method") != "bezel":
             continue
         e = edits.setdefault(r["id"], {})
-        if (e.get("holds") or e.get("cuts")) and not a.force:
+        manual = bool(e.get("holds") or e.get("cuts")) and not e.get("auto_cuts")
+        if manual and not a.force:
             print(f"-- {r['id']}: has holds/cuts already, skipped (use --force)"); continue
         src = find_source(a.source, int(r["episode"][1:3]), int(r["episode"][4:6]))
         if not src:
@@ -145,7 +147,9 @@ def main():
         print(f"{r['id']}: {len(fr)} frames, {frac:.0%} bezel; holds [{holds}] cuts [{cuts}]")
         if a.dry_run:
             continue
-        e["holds"], e["cuts"], e["auto_cuts"] = holds, cuts, True
+        if manual and (holds, cuts) != (e.get("holds", ""), e.get("cuts", "")):   # keep the hand edit for "revert"
+            e["prev_holds"], e["prev_cuts"] = e.get("holds", ""), e.get("cuts", "")
+        e["holds"], e["cuts"], e["auto_cuts"], e["auto_frac"] = holds, cuts, True, round(float(frac), 2)
         changed += 1
     if changed:
         with open(rp, "w", encoding="utf-8") as f:

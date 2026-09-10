@@ -161,7 +161,10 @@ function buildChannels(clips) {
   if (out.length) channels.push({ name: 'OUTLIERS', clips: out });
   const day = Math.floor(Date.now() / 864e5);
   channels.forEach((c, i) => {                                   // fixed running order per channel per day
-    c.order = c.mix || shuffle ? shuffled(c.clips, day * 31 + i) : c.clips.slice();
+    // clips from one episode always run back to back, in episode order; the episodes themselves shuffle
+    const eps = {}; for (const x of c.clips) (eps[x.episode || x.name] = eps[x.episode || x.name] || []).push(x);
+    const groups = Object.values(eps).map(g => g.sort((p, q) => (p.start || '').localeCompare(q.start || '')));
+    c.order = (c.mix || shuffle ? shuffled(groups, day * 31 + i) : groups).flat();
     c.total = c.order.reduce((s, x) => s + (x.dur || 30), 0);
   });
 }
