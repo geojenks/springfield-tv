@@ -50,6 +50,7 @@ Two steps, both stdlib + numpy + Pillow + ffmpeg:
 ```
 python scripts/fetch_frinkiac_subs.py --seasons 1-9                 # subtitle tracks -> work/subs/
 python scripts/find_segments.py --source /path/to/episodes --seasons 5-7 --anchorless
+python scripts/find_segments.py --source /path/to/episodes --seasons 1-4 --anchorless --merge   # later seasons: keep what is there
 ```
 
 `fetch_frinkiac_subs.py` pulls each episode's full subtitle track (with millisecond timings) from
@@ -85,6 +86,10 @@ which `extract_clips.py --catalog work/segments_reviewed.csv` cuts into `clips/`
 `python scripts/auto_cuts.py --source /path/to/episodes` fills holds and cuts automatically for accepted
 rows with the purple bezel, from a frame-by-frame bezel test (leading sofa audio becomes a hold, interior
 sofa shots become cuts). Check the result on the review page and delete any cut that is wrong.
+For rows with no purple bezel (projector, another TV, full screen, a play on stage)
+`python scripts/vision_cuts.py --source /path/to/episodes --todo` finds the shot changes locally, puts one
+frame per shot on a numbered contact sheet and asks a Claude model (set `ANTHROPIC_API_KEY`) which shots are
+the programme; the review panel then shows the shots as clickable buttons so a wrong call is one click away.
 
 Then open http://localhost:8765/player/ : MAIN (everything shuffled, an episode's clips kept together) plus
 I&S · KRUSTY, CHANNEL 6 NEWS, TROY McCLURE and MISC, each running on

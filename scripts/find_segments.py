@@ -200,6 +200,9 @@ def main():
     ap.add_argument("--cats", default=",".join(CATS))
     ap.add_argument("--anchorless", action="store_true",
                     help="also report screen runs >= MIN_SCREEN s that no anchor claimed (category 'screen')")
+    ap.add_argument("--merge", action="store_true",
+                    help="keep the rows already in <out>/segments.csv and skip episodes that have any; "
+                         "new episodes are appended (review.json and existing thumbs are never touched)")
     a = ap.parse_args()
     lo, hi = map(int, a.seasons.split("-"))
     cats = a.cats.split(",")
@@ -215,11 +218,17 @@ def main():
             vids[(s, e)] = p
 
     os.makedirs(a.out, exist_ok=True)
+    seg_csv = os.path.join(a.out, "segments.csv")
+    old, done = [], set()
+    if a.merge and os.path.exists(seg_csv):
+        old = list(csv.DictReader(open(seg_csv, encoding="utf-8")))
+        done = {r["episode"] for r in old}
+        print(f"merge: keeping {len(old)} rows over {len(done)} episodes already scanned")
     rows, cards = [], []
     for sp in sorted(glob.glob(os.path.join(a.subs, "S??E??.json"))):
         key = os.path.basename(sp)[:6]
         s, e = int(key[1:3]), int(key[4:6])
-        if not lo <= s <= hi or (s, e) not in vids:
+        if not lo <= s <= hi or (s, e) not in vids or key in done:
             continue
         subs = json.load(open(sp, encoding="utf-8")).get("Subtitles") or []
         anchors = anchors_for(subs, cats)
@@ -282,10 +291,12 @@ def main():
         dedupe(rows, cards, key)
         print(f"{len(bruns)} bezel runs, {len(yruns)} yellow runs")
 
-    with open(os.path.join(a.out, "segments.csv"), "w", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=list(rows[0].keys()) if rows else ["id"])
+    allrows = sorted(old + rows, key=lambda r: (r["episode"], r["start"]))
+    fields = list(rows[0].keys()) if rows else (list(old[0].keys()) if old else ["id"])
+    with open(seg_csv, "w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=fields, extrasaction="ignore")
         w.writeheader()
-        w.writerows(rows)
+        w.writerows(allrows)
 
     with open(os.path.join(a.out, "segments.html"), "w", encoding="utf-8") as f:
         f.write(HEAD)
@@ -298,7 +309,7 @@ def main():
             for lab, tp in thumbs:
                 f.write(f"<div class={lab}><img class=t src='{tp}'><div class=lab>{lab}</div></div>")
             f.write(f"<div class=strip><img src='{spath}'></div></div>\n")
-    print(f"\n{len(rows)} segments -> {a.out}/segments.csv, {a.out}/segments.html")
+    print(f"\n{len(rows)} new segments ({len(allrows)} total) -> {seg_csv}; {a.out}/segments.html lists the new ones")
 
 
 if __name__ == "__main__":

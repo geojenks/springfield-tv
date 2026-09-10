@@ -2,6 +2,8 @@
 <meta charset="utf-8">
 <title>segment review</title>
 <style>
+  .shot { padding: 1px 5px; margin: 1px; font-size: 11px; border: 1px solid #555; background: #333; color: #aaa }
+  .shot.on { background: #2a5; color: #fff; border-color: #6d8 }
 body{font:13px system-ui;background:#111;color:#ddd;margin:0;padding:0 12px 60px}
 .hdr{position:sticky;top:0;background:#111;padding:8px 0;z-index:2;border-bottom:1px solid #333;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .hdr input,.hdr select{background:#222;color:#ddd;border:1px solid #444;padding:4px}
@@ -102,7 +104,7 @@ function render() {
       <span class="m ${r.method.split('+')[0]}">${r.method}</span> conf ${r.confidence}<br>
       <span class=big>${cur(r, 'start')} → ${cur(r, 'end')}</span> <span class=lab>(${(sec(cur(r, 'end')) - sec(cur(r, 'start'))).toFixed(1)} s) anchor ${r.anchor}</span><br>
       <span class=lab>${esc(r.anchor_text.slice(0, 160))}</span><br>
-      <span class=lab>${r.screen_spans ? 'on screen: ' + r.screen_spans.split(';').length + ' span(s)' : ''} ${(edits[r.id] || {}).cutaways ? '· <b style="color:#fc6">cutaways</b>' : ''} ${(edits[r.id] || {}).auto_cuts ? '· <b style="color:#6cf">auto-cut' + (edits[r.id].auto_frac != null ? ' ' + Math.round(edits[r.id].auto_frac * 100) + '% ' + (edits[r.id].auto_cue || 'bezel') : '') + ', to check</b>' : ''} ${(edits[r.id] || {}).holds ? '· <b style="color:#fc6">holds</b> ' + esc(edits[r.id].holds) : ''} ${(edits[r.id] || {}).cuts ? '· <b style="color:#f66">cuts</b> ' + esc(edits[r.id].cuts) : ''} ${(edits[r.id] || {}).note ? '· ' + esc(edits[r.id].note) : ''}</span><br>
+      <span class=lab>${r.screen_spans ? 'on screen: ' + r.screen_spans.split(';').length + ' span(s)' : ''} ${(edits[r.id] || {}).cutaways ? '· <b style="color:#fc6">cutaways</b>' : ''} ${(edits[r.id] || {}).auto_cuts ? '· <b style="color:#6cf">auto-cut' + (edits[r.id].auto_frac != null ? ' ' + Math.round(edits[r.id].auto_frac * 100) + '% ' + (edits[r.id].auto_cue || 'bezel') : '') + ', to check</b>' : ''} ${(edits[r.id] || {}).holds ? '· <b style="color:#fc6">holds</b> ' + esc(edits[r.id].holds) : ''} ${(edits[r.id] || {}).cuts ? '· <b style="color:#f66">cuts</b> ' + esc(edits[r.id].cuts) : ''} ${(edits[r.id] || {}).note ? '· ' + esc(edits[r.id].note) : ''} ${(edits[r.id] || {}).vision ? '· <span style="color:#9c9">👁 ' + esc(edits[r.id].vision) + '</span>' : ''}</span><br>
       <button onclick="toggle('${r.id}')">▶ watch / edit</button>
       <button onclick="setStatus('${r.id}','accept')">✓</button> <button onclick="setStatus('${r.id}','reject')">✗</button></div>` +
       labs.map(l => `<div><img class=t src="/work/seg/${r.episode}/${r.id}_${l}.jpg" onerror="this.style.visibility='hidden'" onclick="toggle('${r.id}','${l}')"><div class=lab>${l}</div></div>`).join('') +
@@ -135,6 +137,8 @@ function toggle(id, at) {
           <button onclick="cutMark()">( cut start = here</button> <button onclick="cutEnd()">) cut end = here</button> <button onclick="ecx.value='';onEdit()">clear</button>
           <span class=lab>both preview with ▶ play segment</span>
           &nbsp; <button onclick="keepCuts()" title="k">✓ keep cuts (k)</button> <button onclick="undoCuts()" title="u">undo all cuts → whole clip (u)</button>${(edits[id] || {}).prev_holds != null ? ' <button onclick="revertCuts()" title="r">revert to my edit (r)</button>' : ''}</div>
+        ${(edits[id] || {}).shots ? '<div class=row><span class=lab>shots (vision_cuts.py; green = programme, grey = room; click = go to first frame, then ( ) { } as usual):</span><br>' +
+          edits[id].shots.map((h, i) => `<button class="shot ${h[2] ? 'on' : 'off'}" title="${hms(h[0])} → ${hms(h[1])}" onclick="go(${h[0]})">${i + 1}</button>`).join('') + ' <a href="/work/vision/' + id + '.jpg" target=_blank class=lab>sheet</a></div>' : ''}
         <div class=row><button onclick="step(-5)">−5 s</button><button onclick="step(-1)">−1 s</button><button onclick="step(-1/FPS)">−1 f</button>
           <button id=pp onclick="playPause()">play</button>
           <button onclick="step(1/FPS)">+1 f</button><button onclick="step(1)">+1 s</button><button onclick="step(5)">+5 s</button>

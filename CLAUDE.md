@@ -13,6 +13,8 @@ scripts/review_server.py + review.html   review page with real video scrubbing (
                                   accept/reject, cutaways flag, holds, cuts) -> work/review.json + work/segments_reviewed.csv;
                                   also serves /player/ and /clips/
 scripts/auto_cuts.py              frame-accurate bezel test per accepted row -> holds (leading audio) + cuts (sofa shots)
+scripts/vision_cuts.py            same for rows without a pixel cue: local shot detection + one Claude vision call
+                                  per segment (contact sheet in work/vision/) -> holds/cuts/shots; needs ANTHROPIC_API_KEY
 player/index.html                 channel-hopper fed by clips/index.csv (channels per category + MIX + OUTLIERS,
                                   wall-clock schedule, optional purple TV frame overlay); drop files still works
 refs/                             reference PNGs for hash matching (filename = label); empty so far
@@ -80,6 +82,14 @@ Bumblebee Man, adverts, "we now return to" bumpers), for a channel-hopping simul
    lists them, `k` keeps, `u` undoes every hold/cut (whole clip), `r` restores a hand edit that `--force`
    stashed in prev_holds/prev_cuts.
    Reload the review page after running it (the page posts only rows it edited, server merges per row).
+   `python scripts/vision_cuts.py --source <eps> --ids ... | --todo [--only-todo] | --all [--sheets-only]`
+   does the same for rows the cues can't see (projector, other TVs, full screen, theatre stage): shot
+   changes are found locally (frame-to-frame difference, hard cuts land within a frame of hand cuts), one
+   frame per shot goes on a numbered contact sheet (`work/vision/<id>.jpg`) and one Claude call per segment
+   (`--model`, default claude-opus-5, ~1500 tokens) says which shots are the programme. Leading room shots
+   -> hold, interior/trailing -> cuts; programme found inside `--pad` (3 s) either side moves start/end out.
+   Rows get `auto_cue=vision`, `shots` and `vision` (note): the panel shows a clickable shot strip (green =
+   programme) that seeks to a shot's first frame, and a link to the sheet. `--sheets-only` needs no key.
 4. `python scripts/extract_clips.py --source <eps> --catalog work/segments_reviewed.csv --precise`
    → `clips/S05E07_<id>_<category>.mp4` + `clips/index.csv` (carries dur, method, cutaways, note, holds, cuts).
 5. Player: http://localhost:8765/player/ (or `python -m http.server` at repo root → /player/). Channels
@@ -100,14 +110,16 @@ the whole span and flag `cutaways=1` (kept in index.csv; the player no longer ha
 `scan_episodes.py` (yellow-only scan, ~1 in 5 precision) is superseded; kept for its helpers.
 
 ## Known gaps / next steps
-0. Only S5–7 have been scanned (`find_segments.py --seasons 5-7`). The McBain/Mendoza pieces are S02E12,
-   S02E15, S03E09 (grep work/subs for Mendoza); S1–4 and S8–9 need a scan and review pass.
+0. S1–9 are all scanned; `find_segments.py --merge` keeps existing rows and skips episodes that already
+   have any, so a re-scan never overwrites review work (without --merge it rewrites segments.csv). S1–4 and
+   S8–9 rows are unreviewed. The McBain/Mendoza pieces are S02E12, S02E15, S03E09.
 1. TV-in-shot segments where the set is small in frame (S01E04 8:58) are not worth extracting.
    Mask runs sometimes start a few seconds late when the opening shot is a dim TV frame
    (S05E07 8:42 → really 8:40); the review page is where that gets fixed.
 2. Full-screen shots with no mask: tried CLIP ViT-B/32 kNN against bezel-confirmed frames
    (torch cu121 + open_clip installed): no separation, window max below background p99. Not
-   pursued; needs a different idea (audio? per-scene shot matching) or eyes.
+   pursued for *finding* them; once a row exists (hand-added or anchor_only) `vision_cuts.py`
+   handles the cutting.
    Label `screen` rows by category from their dialogue (regex/LLM) instead of leaving "screen".
 3. Wikisimpsons `Category:TV shows` and `List of Troy McClure media` give titles but no episode
    or timing; resolve each title against `work/subs` to build the other catalog CSVs.
