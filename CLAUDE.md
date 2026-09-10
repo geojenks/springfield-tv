@@ -82,19 +82,26 @@ Bumblebee Man, adverts, "we now return to" bumpers), for a channel-hopping simul
    Reload the review page after running it (the page posts only rows it edited, server merges per row).
 4. `python scripts/extract_clips.py --source <eps> --catalog work/segments_reviewed.csv --precise`
    → `clips/S05E07_<id>_<category>.mp4` + `clips/index.csv` (carries dur, method, cutaways, note, holds, cuts).
-5. Player: http://localhost:8765/player/ (or `python -m http.server` at repo root → /player/). Channels =
-   one per category + MIX (all, shuffled per day) + OUTLIERS (cutaways=1). Dial / ↑↓ = channel, ◀▶ / ←→ =
-   clip, each channel runs on a shared wall clock (EPOCH 2026-01-01) so a switch lands mid-programme.
+5. Player: http://localhost:8765/player/ (or `python -m http.server` at repo root → /player/). Channels
+   (`GROUPS` in player/index.html): MAIN = everything in one big shuffle, then I&S · KRUSTY
+   (itchy_scratchy, krusty), CHANNEL 6 NEWS (kent_brockman, news), TROY McCLURE, MISC (advert, bumper,
+   mcbain, screen, anything else). A category's first token (before `&`/`+`) picks the group. Within every
+   channel an episode's clips run back to back in episode order; the episodes shuffle per day. Dial / ↑↓ =
+   channel, ◀▶ / ←→ = clip, each channel runs on a shared wall clock (EPOCH 2026-01-01) so a switch lands
+   mid-programme. Categories in use: itchy_scratchy, krusty, kent_brockman, news, troy_mcclure, mcbain,
+   advert, bumper, screen (unnamed show; relabel on the review page when the dialogue makes it clear).
    FRAME button (`f`): auto draws the purple in-show TV frame over clips whose method isn't `bezel`.
    Rows with holds/cuts are re-encoded (`edit_filter`: trim pieces + tpad clone + concat) even
    without `--precise`.
 
 Cutaways policy (user decision): do NOT splice out sofa shots while the TV audio continues; keep
-the whole span and flag `cutaways=1`. The player can route flagged clips to their own channel.
+the whole span and flag `cutaways=1` (kept in index.csv; the player no longer has an OUTLIERS channel).
 
 `scan_episodes.py` (yellow-only scan, ~1 in 5 precision) is superseded; kept for its helpers.
 
 ## Known gaps / next steps
+0. Only S5–7 have been scanned (`find_segments.py --seasons 5-7`). The McBain/Mendoza pieces are S02E12,
+   S02E15, S03E09 (grep work/subs for Mendoza); S1–4 and S8–9 need a scan and review pass.
 1. TV-in-shot segments where the set is small in frame (S01E04 8:58) are not worth extracting.
    Mask runs sometimes start a few seconds late when the opening shot is a dim TV frame
    (S05E07 8:42 → really 8:40); the review page is where that gets fixed.

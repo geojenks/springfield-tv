@@ -86,6 +86,7 @@ which `extract_clips.py --catalog work/segments_reviewed.csv` cuts into `clips/`
 rows with the purple bezel, from a frame-by-frame bezel test (leading sofa audio becomes a hold, interior
 sofa shots become cuts). Check the result on the review page and delete any cut that is wrong.
 
-Then open http://localhost:8765/player/ : one channel per category plus MIX and OUTLIERS, each running on
+Then open http://localhost:8765/player/ : MAIN (everything shuffled, an episode's clips kept together) plus
+I&S · KRUSTY, CHANNEL 6 NEWS, TROY McCLURE and MISC, each running on
 a wall clock so changing channel lands mid-programme; the FRAME button draws the in-show purple TV frame
 over clips that were shot full-screen.
