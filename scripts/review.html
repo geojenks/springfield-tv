@@ -32,7 +32,7 @@ kbd{background:#333;border:1px solid #555;border-radius:3px;padding:0 4px;font:1
   <b>segment review</b>
   <input id=q placeholder="filter: episode / id / text" size=28>
   <select id=fm><option value="">all methods</option><option>bezel</option><option>mask</option><option>screen_only</option><option>no_yellow</option><option>anchor_only</option></select>
-  <select id=fs><option value="">all statuses</option><option value="todo">todo</option><option value="accept">accepted</option><option value="reject">rejected</option><option value="auto">auto-cut, to check</option></select>
+  <select id=fs><option value="">all statuses</option><option value="todo">todo</option><option value="accept">accepted</option><option value="reject">rejected</option><option value="auto">auto-cut, to check</option><option value="vision">vision-cut (API), to check</option><option value="visionall">vision-cut, all</option></select>
   <span id=count></span>
   <span id=status></span>
   <span class=lab>keys when a row is open: <kbd>,</kbd><kbd>.</kbd> ±1 frame &nbsp;<kbd>←</kbd><kbd>→</kbd> ±1 s &nbsp;<kbd>shift</kbd> ±5 s &nbsp;<kbd>space</kbd> play &nbsp;<kbd>[</kbd><kbd>]</kbd> set start/end &nbsp;<kbd>{</kbd><kbd>}</kbd> hold start/end <kbd>v</kbd> hold start→here <kbd>*</kbd> flip which frame a hold freezes on &nbsp;<kbd>(</kbd><kbd>)</kbd> cut start/end &nbsp;<kbd>k</kbd> keep cuts <kbd>u</kbd> undo cuts <kbd>r</kbd> revert to my edit &nbsp;<kbd>a</kbd> accept <kbd>x</kbd> reject &nbsp;<kbd>n</kbd> next</span>
@@ -95,7 +95,8 @@ function render() {
   for (const r of rows) {
     const st = (edits[r.id] || {}).status || 'todo';
     if (fm && r.method.split('+')[0] !== fm) continue;
-    if (fs === 'auto' ? !(edits[r.id] || {}).auto_cuts : (fs && st !== fs)) continue;
+    const ed = edits[r.id] || {};
+    if (fs === 'auto' ? !ed.auto_cuts : fs === 'vision' ? !(ed.auto_cuts && ed.auto_cue === 'vision') : fs === 'visionall' ? ed.auto_cue !== 'vision' : (fs && st !== fs)) continue;
     if (q && !(r.id + ' ' + r.anchor_text + ' ' + r.category).toLowerCase().includes(q)) continue;
     k++;
     const d = document.createElement('div'); d.className = 'c ' + st; d.id = 'row-' + r.id;
