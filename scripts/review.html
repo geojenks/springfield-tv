@@ -157,11 +157,17 @@ async function playSeg() {
   try { await v.play(); } catch (err) { return; }
   const loop = () => {
     if (!open || open.v !== v || run2 !== holdRun) { hc.style.display = 'none'; return; }
-    const t = v.currentTime, c = cuts.find(x => t >= x[0] && t < x[1]);
-    if (c) { if (!v.seeking) v.currentTime = c[1] + 0.05; requestAnimationFrame(loop); return; }   // skip the cut (land just past b: seeks snap to the frame before)
+    // Cuts: the browser paints the first cut frame before this loop can see it, and the seek takes a
+    // few more frames, so jump one frame early and keep the last good frame on the canvas while seeking.
+    // (extract_clips is frame-exact; this only makes the preview match it.)
+    const t = v.currentTime, c = cuts.find(x => t >= x[0] - 1.5 / FPS && t < x[1]);
+    if (c) {
+      if (!v.seeking) { hc.getContext('2d').drawImage(v, 0, 0, 480, 360); hc.style.display = 'block'; v.currentTime = c[1] + 0.05; }  // land just past b: seeks snap to the frame before
+      requestAnimationFrame(loop); return;
+    }
     const i = holds.findIndex(h => t >= h[0] && t < h[1]);
-    if (i >= 0) { hc.getContext('2d').drawImage(frames[i], 0, 0); hc.style.display = 'block'; } else hc.style.display = 'none';
-    if (t >= e || v.paused) { v.pause(); pp.textContent = 'play'; hc.style.display = 'none'; return; }
+    if (i >= 0) { hc.getContext('2d').drawImage(frames[i], 0, 0); hc.style.display = 'block'; } else if (!v.seeking) hc.style.display = 'none';
+    if (t >= e - 1 / FPS || v.paused) { v.pause(); pp.textContent = 'play'; hc.style.display = 'none'; return; }
     requestAnimationFrame(loop);
   };
   requestAnimationFrame(loop);
