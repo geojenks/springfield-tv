@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Springfield TV</title>
+<style>
+  :root{
+    /* the in-show set: a purple box with a bulging screen, two knobs, ridged speaker (S05E02 8:20) */
+    --tv:#4a3e69; --tv-light:#6a5b8e; --tv-dark:#352b4d; --ink:#1e1630; --knob:#8c7fa8; --knob-dark:#5e5280;
+    --phosphor:#0b0f0c; --mustard:#d9a32b; --cream:#e9dcb8; --tvpurple:#4a3e69;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:radial-gradient(circle at 50% 30%,#2e2a2a,#151212 70%);
+    font-family:"Courier New",Courier,monospace;color:var(--cream);overflow:hidden}
+  body{display:flex;align-items:center;justify-content:center;padding:16px}
+
+  /* fit the height too, so a phone held sideways gets the whole set (100dvh: the browser chrome comes and goes) */
+  .tv{position:relative;width:min(94vw,720px,calc((100dvh - 32px) * 4 / 3));aspect-ratio:4/3;
+    background:linear-gradient(160deg,var(--tv-light),var(--tv) 45%,var(--tv-dark));
+    border:5px solid var(--ink);border-radius:22px;
+    box-shadow:0 30px 60px #000a,inset 0 3px 0 #8a7bad,inset 0 -5px 0 #2a2140;
+    display:grid;grid-template-columns:1fr 22%;gap:0;padding:4.5% 4% 5% 4.5%}
+  .tv::before,.tv::after{content:"";position:absolute;top:-38%;width:6px;height:40%;
+    background:linear-gradient(#ddd,#666);border:3px solid var(--ink);border-radius:4px;
+    transform-origin:bottom center}
+  .tv::before{left:42%;transform:rotate(-28deg)}
+  .tv::after{left:52%;transform:rotate(24deg)}
+  .foot{position:absolute;bottom:-14px;width:12%;height:14px;background:var(--tv-dark);
+    border:4px solid var(--ink);border-top:0;border-radius:0 0 6px 6px}
+  .foot.l{left:12%} .foot.r{right:12%}
+
+  /* the bezel is the same purple as the picture border in bezel clips, so those blend straight in */
+  .bezel{position:relative;background:linear-gradient(160deg,#5a4d7c,var(--tv) 60%,#3f3460);
+    border:4px solid var(--ink);border-radius:16px;padding:3.5% 3%;
+    box-shadow:inset 0 0 0 2px #6a5b8e55,inset 0 6px 14px #0004}
+  .screen{position:relative;width:100%;height:100%;background:var(--phosphor);
+    border:3px solid #2a2040;border-radius:9%/11%;overflow:hidden;
+    box-shadow:inset 0 0 40px #000,0 0 0 1px #7d6fa0}
+  .screen::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:3;
+    background:repeating-linear-gradient(0deg,#0000 0 2px,#0004 2px 3px),
+      radial-gradient(ellipse at center,#fff0 55%,#0009 100%)}
+  video{width:100%;height:100%;object-fit:cover;display:block}
+  /* the in-show purple TV frame, drawn over clips that were shot full-screen: measured on a
+     bezel frame the picture fills x 0-98%, y 4-97% with ~5% corner radius, so the ring is thin */
+  .frame{position:absolute;inset:3.5% 2.5%;border-radius:6%/8%;pointer-events:none;display:none;z-index:1;
+    box-shadow:0 0 0 400px var(--tvpurple),inset 0 0 0 2px #3a2f52,inset 0 0 14px #0006}
+  .frame.show{display:block}
+  canvas.noise{position:absolute;inset:0;width:100%;height:100%;display:none;z-index:2}
+  .osd{position:absolute;top:10px;left:14px;right:14px;display:flex;justify-content:space-between;
+    font-weight:bold;font-size:clamp(11px,2.2vw,16px);color:#7cff6b;text-shadow:0 0 6px #7cff6b99;
+    opacity:0;transition:opacity .3s;pointer-events:none;z-index:4}
+  .osd.show{opacity:1}
+  .empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:10px;color:#7cff6b;text-align:center;padding:8%;font-size:clamp(11px,2.3vw,15px);cursor:pointer;z-index:4}
+  .empty b{font-size:1.5em;letter-spacing:.15em}
+  .empty small{opacity:.7}
+
+  .panel{display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:0 0 0 7%}
+  .knobwrap{display:flex;flex-direction:column;align-items:center;width:100%}
+  .dial{width:72%;aspect-ratio:1;border-radius:50%;border:4px solid var(--ink);position:relative;cursor:pointer;
+    background:radial-gradient(circle at 35% 35%,#b3a7cc,var(--knob) 55%,var(--knob-dark));
+    box-shadow:0 4px 0 var(--ink),inset 0 -3px 6px #0004;touch-action:none;top:0}
+  .dial.small{width:50%}
+  /* the pointer is a child so rotation and the press effect never fight (that is what made it "resize") */
+  .dial .knob{position:absolute;inset:0;transition:transform .25s cubic-bezier(.3,1.6,.6,1)}
+  .dial .knob::after{content:"";position:absolute;left:50%;top:8%;width:11%;height:36%;
+    background:var(--ink);border-radius:3px;transform:translateX(-50%)}
+  .dial:active{box-shadow:0 1px 0 var(--ink),inset 0 -3px 6px #0004;top:3px}
+  .label{font-size:clamp(8px,1.4vw,11px);letter-spacing:.2em;color:var(--cream);opacity:.8;margin-top:6px;text-align:center;
+    height:2.6em;overflow:hidden;line-height:1.3}   /* fixed height so a long channel name does not shove the knobs about */
+  .row{display:flex;gap:10%;width:100%;justify-content:center}
+  .btn{width:34%;aspect-ratio:1;border-radius:50%;border:4px solid var(--ink);background:var(--knob);
+    box-shadow:0 4px 0 var(--ink);cursor:pointer;font:bold clamp(9px,1.6vw,13px) inherit;color:var(--ink);
+    display:flex;align-items:center;justify-content:center;padding:0}
+  .btn.wide{width:66%;aspect-ratio:auto;border-radius:12px;padding:6px 4px}
+  .btn:active{transform:translateY(3px);box-shadow:0 1px 0 var(--ink)}
+  .btn.on{background:var(--mustard)}
+  .btn:focus-visible,.dial:focus-visible{outline:3px solid #7cff6b;outline-offset:3px}
+  .speaker{width:86%;height:11%;background:repeating-linear-gradient(0deg,var(--ink) 0 3px,#0000 3px 9px);
+    border-radius:4px;opacity:.75}
+  input[type=file]{display:none}
+  /* short viewports (phone in landscape): no aerial or feet sticking out, tighter body padding */
+  @media (max-height:520px){
+    body{padding:6px}
+    .tv{width:min(96vw,calc((100dvh - 12px) * 4 / 3))}
+    .tv::before,.tv::after,.foot{display:none}
+  }
+  @media (prefers-reduced-motion:reduce){.dial .knob{transition:none}}
+</style>
+</head>
+<body>
+<div class="tv">
+  <div class="bezel">
+    <div class="screen" id="screen">
+      <div class="osd" id="osd"><span id="osdCh">CH --</span><span id="osdName"></span></div>
+      <video id="video" playsinline></video>
+      <div class="frame" id="frame"></div>
+      <canvas class="noise" id="noise"></canvas>
+      <div class="empty" id="empty">
+        <b>NO SIGNAL</b>
+        <span id="emptyMsg">Tap here to load clips</span>
+        <small>or drop video files onto the screen</small>
+      </div>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="knobwrap">
+      <div class="dial" id="dial" tabindex="0" role="button" aria-label="Next channel"><div class="knob" id="chKnob"></div></div>
+      <div class="label" id="chLabel">CHANNEL</div>
+    </div>
+    <div class="knobwrap">
+      <div class="dial small" id="vol" tabindex="0" role="slider" aria-label="Volume" aria-valuemin="0" aria-valuemax="100" title="click / wheel / drag; keys - ="><div class="knob" id="volKnob"></div></div>
+      <div class="label" id="volLabel">VOLUME</div>
+    </div>
+    <div class="row">
+      <button class="btn" id="prev" aria-label="Previous clip">◀</button>
+      <button class="btn" id="next" aria-label="Next clip">▶</button>
+    </div>
+    <div class="row"><button class="btn wide" id="shuffle">SHUFFLE</button></div>
+    <div class="row"><button class="btn wide" id="frameBtn" title="purple TV frame: auto / on / off">FRAME: AUTO</button></div>
+    <div class="speaker"></div>
+  </div>
+  <div class="foot l"></div><div class="foot r"></div>
+</div>
+<input type="file" id="picker" accept="video/*" multiple>
+
+<script>
+// Channels come from ../clips/index.csv (written by extract_clips.py) when the page is served over
+// http (review_server.py serves /player/ and /clips/; `python -m http.server` from the repo root
+// works too; scripts/deploy_pages.py publishes the same layout to GitHub Pages). Each channel runs on a wall clock, so switching lands mid-programme like real TV.
+// Dropping files on the screen still works and makes a single FILES channel.
+const $ = id => document.getElementById(id);
+const video = $('video'), noise = $('noise'), osd = $('osd'), osdCh = $('osdCh'), osdName = $('osdName'),
+      empty = $('empty'), picker = $('picker'), dial = $('dial'), chKnob = $('chKnob'), vol = $('vol'), volKnob = $('volKnob'), volLabel = $('volLabel'), shuffleBtn = $('shuffle'),
+      frameBtn = $('frameBtn'), frame = $('frame'), screen = $('screen'), chLabel = $('chLabel');
+
+// channel line-up: MAIN (everything, one big shuffle) then four groups. A clip's category picks its
+// group by its first token (troy_mcclure&musical -> troy); anything unlisted lands in MISC.
+const GROUPS = [
+  { name: 'I&S · KRUSTY', cats: ['itchy_scratchy', 'krusty'] },
+  { name: 'CHANNEL 6 NEWS', cats: ['kent_brockman', 'news'] },
+  { name: 'TROY McCLURE', cats: ['troy_mcclure'] },
+  { name: 'MISC', cats: [] },                 // adverts, bumpers, McBain, unnamed shows
+];
+const groupOf = c => GROUPS.find(g => g.cats.includes((c.category || '').split(/[&+]/)[0])) || GROUPS[GROUPS.length - 1];
+const EPOCH = Date.UTC(2026, 0, 1) / 1000;      // wall-clock origin shared by every viewer
+let channels = [], ch = -1, cur = null, frameMode = 'auto', dialAngle = 0, osdTimer = null, shuffle = false;
+
+function parseCSV(t) {
+  const out = [], n = t.length; let row = [], f = '', q = false, i = 0;
+  while (i < n) {
+    const c = t[i];
+    if (q) { if (c === '"') { if (t[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += c; }
+    else if (c === '"') q = true;
+    else if (c === ',') { row.push(f); f = ''; }
+    else if (c === '\n' || c === '\r') { if (c === '\r' && t[i + 1] === '\n') i++; row.push(f); out.push(row); row = []; f = ''; }
+    else f += c;
+    i++;
+  }
+  if (f.length || row.length) { row.push(f); out.push(row); }
+  const h = out.shift();
+  return out.filter(r => r.length === h.length).map(r => Object.fromEntries(h.map((k, j) => [k, r[j]])));
+}
+function seeded(seed) { let s = seed >>> 0 || 1; return () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296; }
+function shuffled(a, seed) { const r = seeded(seed), b = a.slice(); for (let i = b.length - 1; i > 0; i--) { const j = r() * (i + 1) | 0; [b[i], b[j]] = [b[j], b[i]]; } return b; }
+
+function buildChannels(clips) {
+  channels = [{ name: 'MAIN', clips, mix: true }];
+  for (const g of GROUPS) { const cl = clips.filter(c => groupOf(c) === g); if (cl.length) channels.push({ name: g.name, clips: cl }); }
+  const day = Math.floor(Date.now() / 864e5);
+  channels.forEach((c, i) => {                                   // fixed running order per channel per day
+    // clips from one episode always run back to back, in episode order; the episodes themselves shuffle
+    const eps = {}; for (const x of c.clips) (eps[x.episode || x.name] = eps[x.episode || x.name] || []).push(x);
+    const groups = Object.values(eps).map(g => g.sort((p, q) => (p.start || '').localeCompare(q.start || '')));
+    c.order = (c.mix || shuffle ? shuffled(groups, day * 31 + i) : groups).flat();
+    c.total = c.order.reduce((s, x) => s + (x.dur || 30), 0);
+  });
+}
+function nowIn(chan) {                                           // (clip index, offset) on the wall clock
+  let t = (Date.now() / 1000 - EPOCH) % chan.total, i = 0;
+  while (i < chan.order.length - 1 && t >= (chan.order[i].dur || 30)) { t -= chan.order[i].dur || 30; i++; }
+  return [i, t];
+}
+function tune(dir) {
+  if (!channels.length) return;
+  ch = (ch + dir + channels.length) % channels.length;
+  dialAngle += dir * 30; chKnob.style.transform = `rotate(${dialAngle}deg)`;
+  chLabel.textContent = channels[ch].name;
+  const [i, off] = nowIn(channels[ch]);
+  play(i, off);
+}
+function play(i, offset) {
+  const chan = channels[ch]; cur = i;
+  flashStatic(() => {
+    const c = chan.order[cur];
+    video.src = c.url;
+    video.onloadedmetadata = () => {                              // seek only once the duration is known
+      const off = offset || 0;
+      video.currentTime = off < video.duration - 1 ? off : 0;
+      video.play().catch(() => {                                  // phones: no sound before a tap
+        $('emptyMsg').textContent = 'tap to switch on'; empty.querySelector('small').style.display = 'none'; empty.style.display = '';
+      });
+    };
+    applyFrame(c);
+    osdCh.textContent = `CH ${ch + 1} ${chan.name}`;
+    osdName.textContent = (c.name || '').slice(0, 26);
+    osd.classList.add('show'); clearTimeout(osdTimer);
+    osdTimer = setTimeout(() => osd.classList.remove('show'), 2500);
+  });
+}
+function step(dir) { if (ch < 0) return; const n = channels[ch].order.length; play((cur + dir + n) % n, 0); }
+function applyFrame(c) {
+  const show = frameMode === 'on' || (frameMode === 'auto' && c && c.method && c.method !== 'bezel');
+  frame.classList.toggle('show', !!show);
+}
+function flashStatic(done) {
+  if (matchMedia('(prefers-reduced-motion:reduce)').matches) return done();
+  const ctx = noise.getContext('2d'); noise.width = 160; noise.height = 120; noise.style.display = 'block';
+  let frames = 0;
+  (function draw() {
+    const img = ctx.createImageData(160, 120), d = img.data;
+    for (let i = 0; i < d.length; i += 4) { const v = Math.random() * 255 | 0; d[i] = d[i + 1] = d[i + 2] = v; d[i + 3] = 255; }
+    ctx.putImageData(img, 0, 0);
+    if (++frames < 8) setTimeout(draw, 40); else { noise.style.display = 'none'; done(); }   // timer, not rAF: still completes in a background tab
+  })();
+}
+
+async function loadIndex() {
+  try {
+    const t = await (await fetch('../clips/index.csv', { cache: 'no-cache' })).text();
+    const clips = parseCSV(t).map(r => ({ ...r, url: '../clips/' + encodeURIComponent(r.file), dur: +r.dur || 30,
+      name: (r.note || r.category.replace(/_/g, ' ')) + ' · ' + r.episode }));
+    if (!clips.length) throw new Error('empty');
+    empty.style.display = 'none'; buildChannels(clips); ch = -1; tune(1);
+  } catch (e) {
+    $('emptyMsg').textContent = 'no clips/index.csv — run extract_clips.py, or tap to pick files';
+  }
+}
+function loadFiles(files) {
+  const clips = [...files].filter(f => f.type.startsWith('video/'))
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
+    .map(f => ({ name: f.name.replace(/\.[^.]+$/, ''), url: URL.createObjectURL(f), category: 'files', dur: 30, method: '' }));
+  if (!clips.length) return;
+  empty.style.display = 'none'; buildChannels(clips); ch = -1; tune(1);
+}
+
+video.addEventListener('ended', () => step(1));
+$('next').onclick = () => step(1);
+$('prev').onclick = () => step(-1);
+dial.onclick = () => tune(1);
+
+// volume knob: click = +10% (wraps), wheel or drag = fine, keys - and =. Sweeps 270 degrees.
+let volume = 0.8, volDragged = false, volY = null, volStart = 0;
+try { volume = Math.min(1, Math.max(0, parseFloat(localStorage.getItem('stv-vol') ?? '0.8'))); } catch (e) {}
+function setVolume(v, show = true) {
+  volume = Math.min(1, Math.max(0, v)); video.volume = volume; video.muted = volume === 0;
+  volKnob.style.transform = `rotate(${-135 + volume * 270}deg)`;
+  vol.setAttribute('aria-valuenow', Math.round(volume * 100));
+  try { localStorage.setItem('stv-vol', volume.toFixed(2)); } catch (e) {}
+  if (!show) return;
+  const n = Math.round(volume * 10);
+  volLabel.textContent = 'VOL ' + n;
+  osdName.textContent = '\u25ae'.repeat(n) + '\u25af'.repeat(10 - n);
+  osd.classList.add('show'); clearTimeout(osdTimer);
+  osdTimer = setTimeout(() => { osd.classList.remove('show'); volLabel.textContent = 'VOLUME'; }, 2000);
+}
+vol.onclick = () => { if (!volDragged) setVolume(volume >= 0.99 ? 0 : Math.floor(volume * 10 + 1) / 10); volDragged = false; };
+vol.onkeydown = e => { if (e.key === 'ArrowUp' || e.key === 'ArrowRight') { e.preventDefault(); e.stopPropagation(); setVolume(volume + 0.1); }
+  else if (e.key === 'ArrowDown' || e.key === 'ArrowLeft') { e.preventDefault(); e.stopPropagation(); setVolume(volume - 0.1); } };
+vol.addEventListener('wheel', e => { e.preventDefault(); setVolume(volume - Math.sign(e.deltaY) * 0.05); }, { passive: false });
+vol.addEventListener('pointerdown', e => { volY = e.clientY; volStart = volume; vol.setPointerCapture(e.pointerId); });
+vol.addEventListener('pointermove', e => { if (volY === null) return; const d = (volY - e.clientY) / 150; if (Math.abs(d) > 0.03) { volDragged = true; setVolume(volStart + d); } });
+vol.addEventListener('pointerup', () => volY = null);
+setVolume(volume, false);
+dial.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tune(1); } };
+shuffleBtn.onclick = () => { shuffle = !shuffle; shuffleBtn.classList.toggle('on', shuffle); if (channels.length) { const c = channels[ch].clips; buildChannels(channels.find(x => x.mix).clips); tune(0); } };
+frameBtn.onclick = () => { frameMode = { auto: 'on', on: 'off', off: 'auto' }[frameMode]; frameBtn.textContent = 'FRAME: ' + frameMode.toUpperCase(); if (ch >= 0) applyFrame(channels[ch].order[cur]); };
+empty.onclick = () => { if (ch >= 0) { empty.style.display = 'none'; video.play().catch(() => {}); } else picker.click(); };
+picker.onchange = e => loadFiles(e.target.files);
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') step(1);
+  else if (e.key === 'ArrowLeft') step(-1);
+  else if (e.key === 'ArrowUp') tune(1);
+  else if (e.key === 'ArrowDown') tune(-1);
+  else if (e.key === 'f') frameBtn.click();
+  else if (e.key === '-' || e.key === '_') setVolume(volume - 0.1);
+  else if (e.key === '=' || e.key === '+') setVolume(volume + 0.1);
+  else if (e.key === ' ' && ch >= 0) { e.preventDefault(); video.paused ? video.play() : video.pause(); }
+});
+let sx = null;
+screen.addEventListener('pointerdown', e => sx = e.clientX);
+screen.addEventListener('pointerup', e => { if (sx === null) return; const dx = e.clientX - sx; sx = null; if (Math.abs(dx) > 40) step(dx < 0 ? 1 : -1); });
+document.addEventListener('dragover', e => e.preventDefault());
+document.addEventListener('drop', e => { e.preventDefault(); loadFiles(e.dataTransfer.files); });
+loadIndex();
+</script>
+</body>
+</html>

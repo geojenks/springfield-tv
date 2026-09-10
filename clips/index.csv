@@ -1,0 +1,97 @@
+file,id,episode,category,start,end,dur,method,cutaways,note,holds,cuts
+S05E02_S05E02-mcbain-00_mcbain.mp4,S05E02-mcbain-00,S05E02,mcbain,00:01:39.57,00:02:17.82,38.250,no_yellow,0,,,
+S05E02_S05E02-itchy_scratchy-01_itchy_scratchy.mp4,S05E02-itchy_scratchy-01,S05E02,itchy_scratchy,00:03:11.42,00:03:54.07,42.650,bezel,0,,00:03:11.420-00:03:14.555,
+S05E03_S05E03-bumper-00_bumper.mp4,S05E03-bumper-00,S05E03,bumper,00:06:12.40,00:07:00.59,45.088,bezel,0,,,00:06:29.395-00:06:32.497
+S05E03_S05E03-screen-01_itchy_scratchy.mp4,S05E03-screen-01,S05E03,itchy_scratchy,00:17:06.51,00:17:46.94,36.800,screen_only,0,,00:17:06.510-00:17:14.496,00:17:40.269-00:17:43.899
+S05E04_S05E04-screen-00_screen.mp4,S05E04-screen-00,S05E04,screen,00:05:05.90,00:05:22.11,16.210,screen_only,1,,,
+S05E04_S05E04-screen-01_screen.mp4,S05E04-screen-01,S05E04,screen,00:16:47.66,00:17:48.33,54.640,screen_only,1,,,00:16:52.26-00:16:56.11; 00:17:01.30-00:17:02.39; 00:17:09.32-00:17:10.41
+S05E04_S05E04-screen-02_screen.mp4,S05E04-screen-02,S05E04,screen,00:18:20.89,00:18:30.74,9.850,screen_only,0,,,
+S05E05_S05E05-screen-00_screen.mp4,S05E05-screen-00,S05E05,screen,00:15:35.67,00:15:58.56,22.890,screen_only,1,,00:15:35.67-00:15:40.44,
+S05E06_S05E06-troy_mcclure-00_troy_mcclure.mp4,S05E06-troy_mcclure-00,S05E06,troy_mcclure,00:01:07.15,00:01:46.61,37.084,bezel,1,,,00:01:41.701-00:01:44.077
+S05E06_S05E06-screen-01_news.mp4,S05E06-screen-01,S05E06,news,00:18:25.95,00:19:04.53,28.160,screen_only,1,,00:18:25.95-00:18:28.66,00:18:38.40-00:18:47.18; 00:18:57.96-00:18:59.60
+S05E07_S05E07-troy_mcclure-00_troy_mcclure.mp4,S05E07-troy_mcclure-00,S05E07,troy_mcclure,00:07:51.58,00:09:17.71,81.906,no_yellow,1,,00:07:51.580-00:08:43.357,00:09:07.348-00:09:11.572
+S05E08_S05E08-itchy_scratchy-00_itchy_scratchy.mp4,S05E08-itchy_scratchy-00,S05E08,itchy_scratchy,00:11:36,00:11:53.79,17.790,bezel,0,,00:11:36.000-00:11:37.221,
+S05E09_S05E09-kent_brockman-00_kent_brockman.mp4,S05E09-kent_brockman-00,S05E09,kent_brockman,00:11:02.78,00:11:31.88,22.995,bezel,1,,,00:11:13.736-00:11:15.221; 00:11:20.369-00:11:20.996; 00:11:23.240-00:11:27.233
+S05E10_S05E10-kent_brockman-00_kent_brockman.mp4,S05E10-kent_brockman-00,S05E10,kent_brockman,00:03:24.27,00:04:03.44,7.656,bezel,0,,,00:03:31.926-00:04:03.441
+S05E12_S05E12-kent_brockman-00_kent_brockman.mp4,S05E12-kent_brockman-00,S05E12,kent_brockman,00:11:17.05,00:11:32.83,15.780,anchor_only,0,,,
+S05E12_S05E12-bumper-01_bumper.mp4,S05E12-bumper-01,S05E12,bumper,00:17:52.18,00:18:20.64,28.460,anchor_only,0,,,
+S05E13_S05E13-bumper-01_bumper.mp4,S05E13-bumper-01,S05E13,bumper,00:02:27.97,00:03:14.27,28.876,bezel,1,kent_brockman,00:02:27.970-00:02:29.950,00:02:34.834-00:02:44.239; 00:03:02.884-00:03:10.903
+S05E13_S05E13-screen-02_news.mp4,S05E13-screen-02,S05E13,news,00:04:40.27,00:05:06.91,19.640,screen_only,0,,,00:04:57.34-00:05:04.34
+S05E13_S05E13-screen-03_screen.mp4,S05E13-screen-03,S05E13,screen,00:06:54.84,00:07:04.89,10.050,screen_only,0,,,
+S05E14_S05E14-screen-01_advert.mp4,S05E14-screen-01,S05E14,advert,00:06:29,00:06:40.48,11.480,screen_only,0,,,
+S05E15_S05E15-screen-01_news.mp4,S05E15-screen-01,S05E15,news,00:02:46.14,00:03:33.14,35.850,screen_only,1,,,00:02:49.940-00:02:50.990; 00:03:16.640-00:03:19.740; 00:03:23.290-00:03:30.290
+S05E15_S05E15-screen-02_screen.mp4,S05E15-screen-02,S05E15,screen,00:04:30.07,00:05:01.30,31.230,screen_only,1,,00:04:44.38-00:04:45.41,
+S05E15_S05E15-itchy_scratchy-00_itchy_scratchy.mp4,S05E15-itchy_scratchy-00,S05E15,itchy_scratchy,00:11:42.73,00:12:28.13,45.400,no_yellow,0,,,
+S05E15_S05E15-screen-03_kent_brockman.mp4,S05E15-screen-03,S05E15,kent_brockman,00:16:57.11,00:17:44.69,45.680,screen_only,1,,00:16:57.110-00:16:59.110,00:17:05.260-00:17:07.160
+S05E15_S05E15-screen-04_kent_brockman.mp4,S05E15-screen-04,S05E15,kent_brockman,00:19:46.02,00:20:10.66,23.540,screen_only,1,,,00:19:54.870-00:19:55.970
+S05E16_S05E16-kent_brockman-00_kent_brockman.mp4,S05E16-kent_brockman-00,S05E16,kent_brockman,00:00:32.38,00:01:09.42,37.040,no_yellow,0,,00:01:04.29*-00:01:09.59,
+S05E18_S05E18-screen-00_screen.mp4,S05E18-screen-00,S05E18,screen,00:10:39.36,00:10:54.827,15.467,screen_only,1,,00:10:39.36-00:10:42.155,
+S05E18_S05E18-screen-01_screen.mp4,S05E18-screen-01,S05E18,screen,00:16:41.35,00:17:14.49,33.140,screen_only,1,,00:16:41.35-00:16:43.53,
+S05E20_S05E20-screen-01_screen.mp4,S05E20-screen-01,S05E20,screen,00:17:18.33,00:17:51.496,33.166,screen_only,1,,00:17:18.33-00:17:29.04,
+S05E20_S05E20-screen-02_screen.mp4,S05E20-screen-02,S05E20,screen,00:17:59.63,00:18:13.18,13.550,manual,1,"McGarnigal, second part (added by hand)",00:18:06.50*-00:18:13.18,
+S05E21_S05E21-troy_mcclure-00_troy_mcclure.mp4,S05E21-troy_mcclure-00,S05E21,troy_mcclure,00:07:23.90,00:07:58.60,31.961,mask,1,,00:07:23.90-00:07:25.29,00:07:45.173-00:07:47.912
+S06E01_S06E01-itchy_scratchy-04_krusty.mp4,S06E01-itchy_scratchy-04,S06E01,krusty,00:08:47.15,00:10:27.31,90.690,manual,0,,,00:09:41.51-00:09:50.98
+S06E01_S06E01-screen-01_itchy_scratchy.mp4,S06E01-screen-01,S06E01,itchy_scratchy,00:08:47.15,00:09:41.554,54.404,screen_only,0,,,
+S06E01_S06E01-screen-02_krusty.mp4,S06E01-screen-02,S06E01,krusty,00:13:55.01,00:14:03.58,8.570,screen_only,1,,,00:14:03.636-00:14:12.183; 00:14:15.021-00:14:16.011
+S06E03_S06E03-screen-00_itchy_scratchy.mp4,S06E03-screen-00,S06E03,itchy_scratchy,00:01:34,00:02:02.38,28.380,screen_only,1,,00:01:34.000-00:01:35.320,
+S06E04_S06E04-itchy_scratchy-00_itchy_scratchy.mp4,S06E04-itchy_scratchy-00,S06E04,itchy_scratchy,00:00:33.55,00:01:47.14,71.115,bezel,0,,00:00:33.550-00:00:35.530,00:00:48.037-00:00:48.730; 00:01:11.302-00:01:13.084
+S06E04_S06E04-screen-01_itchy_scratchy.mp4,S06E04-screen-01,S06E04,itchy_scratchy,00:13:49.71,00:15:03.73,74.020,screen_only,1,,00:13:49.71-00:13:52.98; 00:14:08.53-00:14:13.29,
+S06E05_S06E05-screen-00_advert.mp4,S06E05-screen-00,S06E05,advert,00:09:19.73,00:09:39.67,19.940,screen_only,0,,,
+S06E05_S06E05-screen-01_advert.mp4,S06E05-screen-01,S06E05,advert,00:10:51.97,00:11:07.74,15.770,screen_only,0,,,
+S06E05_S06E05-screen-02_news.mp4,S06E05-screen-02,S06E05,news,00:13:07.726,00:13:15.811,8.085,screen_only,0,,,
+S06E08_S06E08-kent_brockman-00_kent_brockman.mp4,S06E08-kent_brockman-00,S06E08,kent_brockman,00:00:37,00:01:17,32.700,bezel,1,,00:00:37.000-00:00:38.200,00:00:42.400-00:00:49.100; 00:01:16.400-00:01:17.000
+S06E09_S06E09-screen-00_news.mp4,S06E09-screen-00,S06E09,news,00:10:26.320,00:11:30.29,58.210,screen_only,1,,00:10:28.180*-00:10:34.03,00:10:28.30-00:10:32.19; 00:10:57.83-00:10:59.70
+S06E09_S06E09-screen-01_news.mp4,S06E09-screen-01,S06E09,news,00:12:49,00:13:55.80,60.365,screen_only,1,,00:12:49.000-00:12:50.320,00:12:57.712-00:13:00.055; 00:13:12.166-00:13:16.258
+S06E09_S06E09-screen-02_screen.mp4,S06E09-screen-02,S06E09,screen,00:17:12.34,00:17:27.98,15.640,screen_only,0,,00:17:11.000-00:17:12.353,00:17:28.061-00:17:29.051
+S06E09_S06E09-screen-03_news.mp4,S06E09-screen-03,S06E09,news,00:19:56.99,00:20:17.18,18.040,screen_only,0,,00:19:56.000-00:19:56.990,00:20:01.60-00:20:03.75
+S06E09_S06E09-screen-04_news.mp4,S06E09-screen-04,S06E09,news,00:20:40.74,00:21:10.83,19.970,screen_only,1,,00:20:40.74-00:20:42.66; 00:21:00.22-00:21:02.20,00:20:51.32-00:21:00.22; 00:21:08.00-00:21:09.22
+S06E10_S06E10-bumper-00_troy_mcclure.mp4,S06E10-bumper-00,S06E10,troy_mcclure,00:00:31,00:00:55.354,24.354,mask,0,,00:00:31.000-00:00:32.287,
+S06E10_S06E10-screen-02_screen.mp4,S06E10-screen-02,S06E10,screen,00:14:37.79,00:14:45.43,7.640,screen_only,0,,00:14:37.000-00:14:37.759,
+S06E13_S06E13-bumper-00_bumper.mp4,S06E13-bumper-00,S06E13,bumper,00:00:32,00:00:52.63,20.630,bezel,0,,00:00:32.000-00:00:33.485,
+S06E14_S06E14-screen-01_kent_brockman.mp4,S06E14-screen-01,S06E14,kent_brockman,00:13:16.50,00:14:37.45,80.950,screen_only,0,,00:13:16.50-00:13:20.79,
+S06E15_S06E15-screen-00_krusty.mp4,S06E15-screen-00,S06E15,krusty,00:00:32,00:01:09.55,29.980,screen_only,1,,00:00:32.000-00:00:32.850,00:00:52.40-00:00:59.97
+S06E16_S06E16-screen-00_advert.mp4,S06E16-screen-00,S06E16,advert,00:10:32.400,00:10:36.650,4.250,screen_only,0,,00:10:27.000-,
+S06E18_S06E18-kent_brockman-00_kent_brockman.mp4,S06E18-kent_brockman-00,S06E18,kent_brockman,00:00:25.53,00:01:19.15,53.620,no_yellow,0,,,
+S06E18_S06E18-screen-03_news.mp4,S06E18-screen-03,S06E18,news,00:01:25.60,00:01:57.32,31.720,screen_only,0,,00:01:25.000-00:01:25.900,
+S06E18_S06E18-mcbain-01_mcbain.mp4,S06E18-mcbain-01,S06E18,mcbain,00:05:17.56,00:06:24,65.500,bezel,0,,,00:06:23.060-00:06:24.060
+S06E20_S06E20-screen-00_kent_brockman.mp4,S06E20-screen-00,S06E20,kent_brockman,00:00:34,00:00:59.02,25.020,screen_only,0,,00:00:34.000-00:00:34.750,
+S06E22_S06E22-screen-00_news.mp4,S06E22-screen-00,S06E22,news,00:09:34,00:10:20.93,46.930,screen_only,0,,00:09:34.000-00:09:35.250,
+S06E23_S06E23-screen-00_screen.mp4,S06E23-screen-00,S06E23,screen,00:10:06,00:10:48.000,42.000,screen_only,0,,00:10:06.000-00:10:06.650,
+S07E01_S07E01-kent_brockman-00_kent_brockman.mp4,S07E01-kent_brockman-00,S07E01,kent_brockman,00:01:26.78,00:01:57.19,30.410,mask,1,,,
+S07E01_S07E01-kent_brockman-01_kent_brockman.mp4,S07E01-kent_brockman-01,S07E01,kent_brockman,00:05:15.54,00:05:36.04,20.500,anchor_only,0,,,
+S07E01_S07E01-screen-02_kent_brockman.mp4,S07E01-screen-02,S07E01,kent_brockman,00:07:49,00:07:58.34,9.340,screen_only,0,,00:07:49.000-00:07:49.792,
+S07E02_S07E02-mcbain-03_mcbain.mp4,S07E02-mcbain-03,S07E02,mcbain,00:02:22.74,00:03:09.47,46.730,manual,0,,00:02:22.74-00:02:23.88,
+S07E02_S07E02-mcbain-04_mcbain.mp4,S07E02-mcbain-04,S07E02,mcbain,00:04:58.86,00:05:05.77,6.910,manual,0,,,
+S07E02_S07E02-mcbain-05_misc.mp4,S07E02-mcbain-05,S07E02,misc,00:05:41.46,00:06:02.04,20.580,manual,0,,,
+S07E02_S07E02-screen-00_news.mp4,S07E02-screen-00,S07E02,news,00:06:07.63,00:06:18.979,11.349,screen_only,0,,00:06:07.000-00:06:07.627,
+S07E02_S07E02-misc-06_mcbain.mp4,S07E02-misc-06,S07E02,mcbain,00:12:16.08,00:12:26.57,10.490,manual,0,,,
+S07E02_S07E02-screen-01_mcbain.mp4,S07E02-screen-01,S07E02,mcbain,00:14:40.30,00:16:16.60,46.230,screen_only,0,,00:14:39.000-00:14:40.287,00:14:56.03-00:15:41.20; 00:15:50.18-00:15:51.99; 00:15:53.85-00:15:56.94
+S07E03_S07E03-itchy_scratchy-00_itchy_scratchy.mp4,S07E03-itchy_scratchy-00,S07E03,itchy_scratchy,00:09:19.58,00:09:56.55,36.970,bezel,0,,,
+S07E04_S07E04-itchy_scratchy-00_itchy_scratchy.mp4,S07E04-itchy_scratchy-00,S07E04,itchy_scratchy,00:07:46.29,00:08:33.90,47.610,bezel,0,,00:07:46.290-00:07:47.511,
+S07E04_S07E04-screen-01_advert.mp4,S07E04-screen-01,S07E04,advert,00:10:06.46,00:10:47.613,41.153,screen_only,0,,00:10:06.00-00:10:07.37,
+S07E05_S07E05-itchy_scratchy-00_itchy_scratchy.mp4,S07E05-itchy_scratchy-00,S07E05,itchy_scratchy,00:07:42,00:08:20.13,38.130,bezel,0,,00:07:42.000-00:07:42.858,
+S07E05_S07E05-troy_mcclure-01_troy_mcclure.mp4,S07E05-troy_mcclure-01,S07E05,troy_mcclure,00:09:47.59,00:11:53.56,125.970,no_yellow,0,,,
+S07E06_S07E06-screen-01_kent_brockman.mp4,S07E06-screen-01,S07E06,kent_brockman,00:02:29,00:02:50.120,21.120,screen_only,0,,,
+S07E06_S07E06-bumper-00_kent_brockman.mp4,S07E06-bumper-00,S07E06,kent_brockman,00:06:41.11,00:06:55,13.890,mask,0,,00:06:40.000-00:06:41.089,
+S07E07_S07E07-bumper-00_bumper.mp4,S07E07-bumper-00,S07E07,bumper,00:15:15.19,00:15:27.58,12.390,bezel,0,,00:15:15.190-00:15:18.820,
+S07E08_S07E08-kent_brockman-00_kent_brockman.mp4,S07E08-kent_brockman-00,S07E08,kent_brockman,00:13:55.04,00:14:06.96,11.920,no_yellow,0,,00:13:55.04-00:13:55.72; 00:13:60.00*-00:14:10.00,
+S07E09_S07E09-screen-00_krusty.mp4,S07E09-screen-00,S07E09,krusty,00:00:33,00:01:15.77,42.770,screen_only,0,,,
+S07E09_S07E09-screen-01_kent_brockman.mp4,S07E09-screen-01,S07E09,kent_brockman,00:13:25.08,00:13:56.505,29.577,screen_only,1,,,00:13:45.780-00:13:47.628
+S07E10_S07E10-troy_mcclure-00_troy_mcclure.mp4,S07E10-troy_mcclure-00,S07E10,troy_mcclure,00:00:00,00:00:50.85,50.850,no_yellow,0,,,
+S07E10_S07E10-screen-05_screen.mp4,S07E10-screen-05,S07E10,screen,00:17:41.825,00:17:56.543,14.718,screen_only,0,,,
+S07E11_S07E11-bumper-00_bumper.mp4,S07E11-bumper-00,S07E11,bumper,00:00:33,00:01:17.48,44.480,bezel,0,,00:00:33.000-00:00:33.759,
+S07E11_S07E11-troy_mcclure-02_troy_mcclure.mp4,S07E11-troy_mcclure-02,S07E11,troy_mcclure,00:07:14.27,00:07:46.86,32.590,no_yellow,0,,,
+S07E13_S07E13-screen-00_screen.mp4,S07E13-screen-00,S07E13,screen,00:00:26,00:01:02.762,30.294,screen_only,1,,,00:00:34.481-00:00:38.705; 00:00:40.454-00:00:41.246; 00:00:42.830-00:00:43.556; 00:00:46.625-00:00:47.351
+S07E14_S07E14-screen-00_screen.mp4,S07E14-screen-00,S07E14,screen,00:00:27,00:00:43.830,10.824,screen_only,1,,,00:00:32.511-00:00:38.517
+S07E15_S07E15-screen-02_kent_brockman.mp4,S07E15-screen-02,S07E15,kent_brockman,00:06:06.17,00:06:28.008,21.838,screen_only,0,,00:06:04.08-00:06:09.77,
+S07E15_S07E15-krusty-00_krusty.mp4,S07E15-krusty-00,S07E15,krusty,00:07:16.78,00:07:55.44,35.590,no_yellow,0,,,00:07:43.38-00:07:46.45
+S07E15_S07E15-troy_mcclure-01_troy_mcclure.mp4,S07E15-troy_mcclure-01,S07E15,troy_mcclure,00:13:12.32,00:15:19.63,127.310,anchor_only,0,,,
+S07E15_S07E15-screen-03_news.mp4,S07E15-screen-03,S07E15,news,00:15:27.72,00:15:45.536,17.816,screen_only,0,,00:15:26.00-00:15:27.43,
+S07E18_S07E18-itchy_scratchy-01_itchy_scratchy.mp4,S07E18-itchy_scratchy-01,S07E18,itchy_scratchy,00:00:26.00,00:01:13.33,47.330,mask,0,,00:00:26.00-00:00:30.52; 00:00:32.75-00:00:38.14,
+S07E18_S07E18-screen-03_itchy_scratchy.mp4,S07E18-screen-03,S07E18,itchy_scratchy,00:02:16.93,00:02:40.00,23.070,screen_only,0,,00:02:16.93-00:02:20.86,
+S07E18_S07E18-screen-04_itchy_scratchy.mp4,S07E18-screen-04,S07E18,itchy_scratchy,00:05:47.51,00:06:43.18,55.670,screen_only,0,,,
+S07E18_S07E18-bumper-02_krusty.mp4,S07E18-bumper-02,S07E18,krusty,00:15:46.23,00:17:26.21,91.830,no_yellow,0,,,00:16:48.51-00:16:56.66
+S07E18_S07E18-screen-05_itchy_scratchy.mp4,S07E18-screen-05,S07E18,itchy_scratchy,00:21:10,00:21:33.232,23.232,screen_only,0,,00:21:10.00-00:21:11.31,
+S07E19_S07E19-troy_mcclure-00_troy_mcclure.mp4,S07E19-troy_mcclure-00,S07E19,troy_mcclure,00:00:26,00:01:12.64,31.152,bezel,1,,00:00:26.000-00:00:27.287,00:00:30.686-00:00:35.240; 00:00:59.198-00:01:09.593; 00:01:12.101-00:01:12.662
+S07E19_S07E19-troy_mcclure-07_troy_mcclure.mp4,S07E19-troy_mcclure-07,S07E19,troy_mcclure,00:09:11,00:09:45.056,34.056,bezel,0,,00:09:11.000-00:09:11.924,
+S07E19_S07E19-troy_mcclure-08_troy_mcclure_musical.mp4,S07E19-troy_mcclure-08,S07E19,troy_mcclure&musical,00:10:49.75,00:12:38.19,102.350,no_yellow,0,,,00:11:44.79-00:11:50.88
