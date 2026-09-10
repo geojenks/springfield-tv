@@ -116,6 +116,8 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_error(404)
 
     def do_POST(self):
+        if self.path == "/render":
+            return self.render()
         if self.path != "/save":
             return self.send_error(404)
         n = int(self.headers.get("Content-Length", 0))
@@ -127,8 +129,37 @@ class Handler(SimpleHTTPRequestHandler):
             with open(rp, "w", encoding="utf-8") as f:
                 json.dump(cur, f, indent=1)
         k = write_reviewed(self.work)
-        body = json.dumps({"ok": True, "accepted": k}).encode()
-        self.send_response(200)
+        self.reply({"ok": True, "accepted": k})
+
+    def render(self):
+        """Body {id, start, end, holds, cuts}: encode that row as it is now (the page sends the
+        unsaved field values) to work/preview/<id>.mp4 and mark preview=true in review.json."""
+        from extract_clips import render_clip, secs, fps_of
+        n = int(self.headers.get("Content-Length", 0))
+        d = json.loads(self.rfile.read(n).decode("utf-8"))
+        rid = re.sub(r"[^\w.-]", "", d.get("id", ""))
+        tag = rid[:6].upper()
+        if not rid or tag not in self.vids:
+            return self.reply({"ok": False, "error": "no episode file for " + tag}, 404)
+        pdir = os.path.join(self.work, "preview")
+        os.makedirs(pdir, exist_ok=True)
+        src = self.vids[tag]
+        try:
+            render_clip(src, secs(d["start"]), secs(d["end"]), d.get("holds", ""), d.get("cuts", ""),
+                        os.path.join(pdir, rid + ".mp4"), fps_of(src))
+        except Exception as ex:
+            return self.reply({"ok": False, "error": str(ex)[:300]}, 500)
+        rp = os.path.join(self.work, "review.json")
+        with SAVE_LOCK:
+            cur = json.load(open(rp, encoding="utf-8")) if os.path.exists(rp) else {}
+            cur.setdefault(rid, {})["preview"] = True
+            with open(rp, "w", encoding="utf-8") as f:
+                json.dump(cur, f, indent=1)
+        self.reply({"ok": True})
+
+    def reply(self, obj, code=200):
+        body = json.dumps(obj).encode()
+        self.send_response(code)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()

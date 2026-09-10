@@ -120,6 +120,19 @@ def norm(r):
         return int(r["season"]), int(r["episode"]), r.get("title", "")
     return None
 
+def render_clip(src, start, end, holds, cuts, dst, fps=30.0, crf=23, preset="veryfast"):
+    """Encode [start, end) of src (seconds) with holds/cuts applied to dst (mp4). Used by
+    extract_clips (--precise), vision_cuts previews and the review server's /render."""
+    cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
+           "-ss", f"{start:.3f}", "-t", f"{end - start:.3f}", "-i", src]
+    fc = edit_filter(holds, cuts, start, end, fps)
+    if fc:
+        cmd += ["-filter_complex", fc, "-map", "[v]", "-map", "[a]"]
+    cmd += ["-c:v", "libx264", "-crf", str(crf), "-preset", preset, "-c:a", "aac", "-b:a", "128k",
+            "-movflags", "+faststart", dst]
+    subprocess.run(cmd, check=True)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--catalog", default="catalog/itchy_scratchy.csv")

@@ -6,35 +6,39 @@ auto_cuts.py needs the purple bezel or a screen mask in every frame. This tool i
   1. decodes the segment (plus --pad seconds either side) and finds every shot change locally,
      frame-exact, from the frame-to-frame difference (animation cuts are hard cuts);
   2. tiles one frame per shot into a numbered contact sheet (work/vision/<id>.jpg, kept so you
-     can see what the model saw);
-  3. asks a Claude model, once per segment, which numbered shots are the programme itself
-     (what the TV / projector / cinema screen / stage is showing, bezel included) and which are
-     the room or audience; the reply also suggests a category and a title;
-  4. turns the answer into the same holds/cuts auto_cuts.py writes: leading room shots -> a hold
-     (audio from start, picture frozen on the first programme frame), interior and trailing room
-     shots -> cuts. If the programme starts or ends inside the pad, start/end move out to it.
+     can see what the model saw) and lists, per shot, the subtitle lines spoken during it;
+  3. asks a Claude model, once per segment, which shots are the programme itself (what the TV /
+     projector / cinema screen / stage is showing, bezel included) and, for the room shots,
+     whether the programme's sound carries on underneath (the model reads the subtitles: the
+     programme's dialogue continuing = yes; the watchers talking, or nothing = no);
+  4. turns that into the review-page edit: room shots with the programme audio under them
+     become holds (picture frozen, sound continues; a*-b when they run to the end), room shots
+     without it become cuts (video and audio removed, the show joins up), and room shots at the
+     very start or end are trimmed off;
+  5. renders the result (work/preview/<id>.mp4, the same ffmpeg graph extract_clips uses) so the
+     review page can play the finished clip; "re-render" there redoes it after hand edits.
 
-Rows get auto_cuts=true, auto_cue="vision", auto_frac, plus `shots` ([t0, t1, on] per shot)
-and `vision` (the model's note) so the review page can show the shot strip. Hand-made holds/cuts
-are left alone unless --force (stashed in prev_holds/prev_cuts, `r` on the page reverts).
+Rows get auto_cuts=true, auto_cue="vision", auto_frac, `shots` ([t0, t1, state] per shot:
+1 programme, 2 room with programme audio -> hold, 0 room -> cut/trim), `vision` (the model's
+note) and `preview`=true. Hand-made holds/cuts are left alone unless --force (stashed in
+prev_holds/prev_cuts, `r` on the page reverts).
 
-  python scripts/vision_cuts.py --source <eps> --ids ID ...          # named rows
+  python scripts/vision_cuts.py --source <eps> --ids ID ...          # named rows (redone even if cut already)
   python scripts/vision_cuts.py --source <eps> --todo [--only-todo]  # unreviewed rows
-  python scripts/vision_cuts.py --source <eps> --all                 # every accepted row without cue cuts
-       [--model claude-opus-5] [--pad 3] [--sheets-only] [--dry-run] [--force] [--work work]
+  python scripts/vision_cuts.py --source <eps> --all                 # every accepted row without cuts
+       [--model claude-opus-5] [--pad 3] [--no-render] [--sheets-only] [--dry-run] [--force] [--work work]
 
 Needs ANTHROPIC_API_KEY in the environment (or --key-file). No SDK: plain HTTPS to the Messages
-API. Roughly one image (~1500 tokens) + a short JSON reply per segment. --sheets-only builds
-the contact sheets and stops (no key needed) so you can check the shot detection first.
-review.json is saved after every row, so the run can be stopped (Ctrl+C) at any time without loss.
-RELOAD the review page after running (the page posts only rows it edited, server merges per row).
+API, ~1500 input tokens per segment. --sheets-only builds the sheets and stops (no key needed).
+review.json is re-read and merged per row on every write, so the run can be stopped (Ctrl+C)
+at any time and the review page can be used while it runs. RELOAD the page afterwards.
 """
 import argparse, base64, csv, io, json, os, re, subprocess, sys, time, urllib.request
 import numpy as np
 from PIL import Image, ImageDraw
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from extract_clips import secs, find_source, fps_of
+from extract_clips import secs, find_source, fps_of, render_clip
 from review_server import write_reviewed, load_rows
 from auto_cuts import hms
 
@@ -45,14 +49,19 @@ API = "https://api.anthropic.com/v1/messages"
 
 PROMPT = """These numbered tiles are one frame from each shot of a clip from The Simpsons, in order. The clip is meant to be an in-universe programme{cat}: something the characters watch on a television, a projector, a cinema screen, or a stage performance in a theatre. Some shots are the programme itself; others are the room or audience (people watching, the sofa, the street, reaction shots, the cinema seats).
 
-For every tile decide:
+Below the tiles is what the subtitle track says is spoken during each shot (with its time span). Lines in a room shot are either the programme carrying on underneath (its presenter, characters or narrator still talking, its song still playing) or the watchers talking to each other.
+
+The goal is a clip of just the programme that stands alone and sounds coherent. For every tile decide:
   on = true  -> the tile shows the programme: the picture on the screen (with or without a TV bezel or rounded screen mask around it, and including the screen filling the whole frame), or the stage/performers of the show being watched.
   on = false -> the tile is the world around the screen: characters watching, the room, the outside of the TV set seen small in a wide shot, reaction shots, a title of the episode itself.
+  audio (only for on = false): "programme" if the programme's own sound continues through this shot (its dialogue, narration or music keeps going, so the shot must be kept with a frozen picture), or "room" if what is heard is the watchers, silence, or the programme is effectively paused (the shot can be dropped and the programme joins up). When a room shot has no subtitle lines at all, prefer "room" unless the lines just before and after it are clearly one continuous programme sentence or song.
 
 A frame that is mostly the TV set from the room (a small screen inside a big room) is off; a frame where the screen's picture fills most of the tile is on. Be decisive; every tile needs an answer.
 
+{lines}
+
 Reply with JSON only, no prose:
-{{"shots": [{{"n": 1, "on": true}}, ...], "category": "<one of itchy_scratchy, krusty, kent_brockman, news, troy_mcclure, mcbain, advert, bumper, film, play, other>", "title": "<programme name if you can tell, else empty>", "note": "<one short sentence about what the programme is>"}}"""
+{{"shots": [{{"n": 1, "on": true}}, {{"n": 2, "on": false, "audio": "programme"}}, ...], "category": "<one of itchy_scratchy, krusty, kent_brockman, news, troy_mcclure, mcbain, advert, bumper, film, play, other>", "title": "<programme name if you can tell, else empty>", "note": "<one short sentence about what the programme is>"}}"""
 
 
 def decode(path, start, dur):
@@ -108,6 +117,24 @@ def sheets(fr, bounds, path):
     return out
 
 
+def load_subs(work, episode):
+    p = os.path.join(work, "subs", f"{episode}.json")
+    if not os.path.exists(p):
+        return []
+    subs = json.load(open(p, encoding="utf-8")).get("Subtitles") or []
+    return [(s["StartTimestamp"] / 1000, s["EndTimestamp"] / 1000, s["Content"].replace("\n", " ").strip())
+            for s in subs]
+
+
+def shot_lines(subs, times):
+    """One text line per shot: '#n  mm:ss.s-mm:ss.s  «what is said»'."""
+    out = []
+    for i, (a, b) in enumerate(times):
+        said = [t for s0, s1, t in subs if s1 > a + 0.15 and s0 < b - 0.15]
+        out.append(f"#{i + 1}  {hms(a)[3:]}-{hms(b)[3:]}  " + (" / ".join(said) if said else "(no subtitle)"))
+    return "Spoken during each shot (subtitle track):\n" + "\n".join(out)
+
+
 def ask(key, model, images, prompt, retries=3):
     content = []
     for i, im in enumerate(images):
@@ -116,13 +143,14 @@ def ask(key, model, images, prompt, retries=3):
         content.append({"type": "image", "source": {"type": "base64", "media_type": "image/jpeg",
                                                     "data": base64.b64encode(im).decode()}})
     content.append({"type": "text", "text": prompt})
-    body = json.dumps({"model": model, "max_tokens": 1500,
+    body = json.dumps({"model": model, "max_tokens": 2000,
                        "messages": [{"role": "user", "content": content}]}).encode()
     req = urllib.request.Request(API, data=body, headers={
         "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json"})
+    txt = ""
     for attempt in range(retries):
         try:
-            with urllib.request.urlopen(req, timeout=120) as r:
+            with urllib.request.urlopen(req, timeout=180) as r:
                 rep = json.load(r)
             txt = "".join(c.get("text", "") for c in rep["content"])
             m = re.search(r"\{.*\}", txt, re.S)
@@ -138,29 +166,50 @@ def ask(key, model, images, prompt, retries=3):
             raise SystemExit(f"unparseable reply: {txt[:300]}")
 
 
-def edit_from_shots(shots, start, end):
-    """[(t0, t1, on)] absolute times -> (holds, cuts, new_start, new_end); the leading off run
-    inside [start, end] becomes a hold, other off runs cuts, programme in the pad extends the row."""
-    on = [(a, b) for a, b, o in shots if o]
-    if not on:
-        return None
-    # merge adjacent programme shots
-    m = [list(on[0])]
-    for a, b in on[1:]:
-        if abs(a - m[-1][1]) < 1e-3:
+def merge_runs(shots):
+    """[(t0, t1, state)] -> runs [[t0, t1, state]] with equal neighbouring states joined."""
+    m = []
+    for a, b, s in shots:
+        if m and m[-1][2] == s and abs(a - m[-1][1]) < 1e-3:
             m[-1][1] = b
         else:
-            m.append([a, b])
-    first, last = m[0][0], m[-1][1]
-    ns, ne = min(start, first), max(end, last)
+            m.append([a, b, s])
+    return m
+
+
+def edit_from_shots(shots):
+    """[(t0, t1, state)] absolute times, state 1 programme / 2 room+programme audio / 0 room ->
+    (holds, cuts, start, end) or None. Leading and trailing state-0 shots are trimmed off;
+    leading/trailing state-2 runs become holds (frozen on the first / last programme frame);
+    interior gaps become one hold or one cut by which state covers more of the gap."""
+    runs = merge_runs(shots)
+    on = [i for i, r in enumerate(runs) if r[2] == 1]
+    if not on:
+        return None
+    first, last = on[0], on[-1]
     holds, cuts = [], []
-    if first > ns:
-        holds.append(f"{hms(ns)}-{hms(first)}")
-    for (a0, a1), (b0, b1) in zip(m, m[1:]):
-        cuts.append(f"{hms(a1)}-{hms(b0)}")
-    if last < ne:
-        cuts.append(f"{hms(last)}-{hms(ne)}")
-    return "; ".join(holds), "; ".join(cuts), ns, ne
+    start = runs[first][0]
+    if first > 0 and runs[first - 1][2] == 2:                 # programme audio before the picture
+        start = runs[first - 1][0]
+        holds.append(f"{hms(start)}-{hms(runs[first][0])}")
+    end = runs[last][1]
+    if last + 1 < len(runs) and runs[last + 1][2] == 2:       # programme audio after the picture
+        end = runs[last + 1][1]
+        holds.append(f"{hms(runs[last][1])}*-{hms(end)}")
+    for i, j in zip(on, on[1:]):                              # interior gaps
+        gap = runs[i + 1:j]
+        a, b = gap[0][0], gap[-1][1]
+        prog = sum(r[1] - r[0] for r in gap if r[2] == 2)
+        (holds if prog >= (b - a) / 2 else cuts).append(f"{hms(a)}-{hms(b)}")
+    return "; ".join(holds), "; ".join(cuts), start, end
+
+
+def save_row(rp, rid, e):
+    """Re-read review.json and merge just this row (the review page may be saving other rows)."""
+    cur = json.load(open(rp, encoding="utf-8")) if os.path.exists(rp) else {}
+    cur[rid] = e
+    with open(rp, "w", encoding="utf-8") as f:
+        json.dump(cur, f, indent=1)
 
 
 def main():
@@ -176,6 +225,7 @@ def main():
     ap.add_argument("--model", default="claude-opus-5")
     ap.add_argument("--key-file", help="file holding the API key (default: ANTHROPIC_API_KEY)")
     ap.add_argument("--sheets-only", action="store_true", help="build contact sheets, no API call")
+    ap.add_argument("--no-render", action="store_true", help="skip rendering work/preview/<id>.mp4")
     ap.add_argument("--dry-run", action="store_true", help="call the API but write nothing")
     a = ap.parse_args()
 
@@ -195,10 +245,12 @@ def main():
             rows.append(dict(r, start=e.get("start") or r["start"], end=e.get("end") or r["end"]))
     if a.ids:
         rows = [r for r in rows if r["id"] in a.ids]
-    vdir = os.path.join(a.work, "vision"); os.makedirs(vdir, exist_ok=True)
-    fps_cache, changed, usage = {}, 0, {"input_tokens": 0, "output_tokens": 0}
+    vdir, pdir = os.path.join(a.work, "vision"), os.path.join(a.work, "preview")
+    os.makedirs(vdir, exist_ok=True); os.makedirs(pdir, exist_ok=True)
+    fps_cache, subs_cache, changed = {}, {}, 0
+    usage = {"input_tokens": 0, "output_tokens": 0}
     for r in rows:
-        e = edits.setdefault(r["id"], {})
+        e = edits.get(r["id"], {})
         had = bool(e.get("holds") or e.get("cuts"))
         if had and not a.force and not a.ids:
             continue
@@ -216,38 +268,46 @@ def main():
         print(f"{r['id']}: {len(fr)} frames, {len(bounds)} shots, {len(ims)} sheet(s)", end="", flush=True)
         if a.sheets_only:
             print(); continue
+        subs = subs_cache.setdefault(r["episode"], load_subs(a.work, r["episode"]))
         cat = e.get("category") or r.get("category") or ""
         cat = f" ({cat.replace('_', ' ')})" if cat and cat != "screen" else ""
-        rep, u = ask(key, a.model, ims, PROMPT.format(cat=cat))
+        rep, u = ask(key, a.model, ims, PROMPT.format(cat=cat, lines=shot_lines(subs, times)))
         for k in usage:
             usage[k] += u.get(k, 0)
-        onmap = {int(s["n"]): bool(s["on"]) for s in rep.get("shots", []) if "n" in s}
-        shots = [[round(x, 3), round(y, 3), int(onmap.get(i + 1, False))] for i, (x, y) in enumerate(times)]
-        res = edit_from_shots([(x, y, o) for x, y, o in shots], start, end)
+        state = {}
+        for s in rep.get("shots", []):
+            if "n" not in s:
+                continue
+            state[int(s["n"])] = 1 if s.get("on") else (2 if str(s.get("audio", "")).lower().startswith("prog") else 0)
+        shots = [[round(x, 3), round(y, 3), state.get(i + 1, 0)] for i, (x, y) in enumerate(times)]
+        res = edit_from_shots([(x, y, o) for x, y, o in shots])
         if res is None:
             print(" -> model saw no programme shots, skipped"); continue
         holds, cuts, ns, ne = res
-        frac = sum(y - x for x, y, o in shots if o) / max(1e-6, sum(y - x for x, y, o in shots))
+        tot = sum(y - x for x, y, o in shots)
+        frac = sum(y - x for x, y, o in shots if o == 1) / max(1e-6, tot)
         print(f" -> {frac:.0%} on; {rep.get('category', '?')} {rep.get('title', '')!r}; "
-              f"start {hms(ns)} end {hms(ne)}; holds [{holds}] cuts [{cuts}]")
+              f"{hms(ns)} → {hms(ne)}; holds [{holds}] cuts [{cuts}]")
         if a.dry_run:
             continue
+        e = json.load(open(rp, encoding="utf-8")).get(r["id"], e) if os.path.exists(rp) else e   # freshest copy
         if had and not e.get("auto_cuts") and (holds, cuts) != (e.get("holds", ""), e.get("cuts", "")):
             e["prev_holds"], e["prev_cuts"] = e.get("holds", ""), e.get("cuts", "")
         e.update(holds=holds, cuts=cuts, auto_cuts=True, auto_cue="vision", auto_frac=round(frac, 2),
-                 shots=shots, vision=f"{rep.get('category', '')} {rep.get('title', '')} — {rep.get('note', '')}".strip())
-        if ns < start - 1e-3:
-            e["start"] = hms(ns)
-        if ne > end + 1e-3:
-            e["end"] = hms(ne)
+                 shots=shots, start=hms(ns), end=hms(ne),
+                 vision=f"{rep.get('category', '')} {rep.get('title', '')} — {rep.get('note', '')}".strip())
+        if not a.no_render:
+            try:
+                render_clip(src, ns, ne, holds, cuts, os.path.join(pdir, f"{r['id']}.mp4"), fps)
+                e["preview"] = True
+            except subprocess.CalledProcessError as ex:
+                print(f"   !! render failed: {ex}")
+        save_row(rp, r["id"], e)
+        edits[r["id"]] = e
         changed += 1
-        with open(rp, "w", encoding="utf-8") as f:      # after every row, so a stopped run keeps its work
-            json.dump(edits, f, indent=1)
     if usage["input_tokens"]:
         print(f"\ntokens: {usage['input_tokens']} in, {usage['output_tokens']} out ({a.model})")
     if changed:
-        with open(rp, "w", encoding="utf-8") as f:
-            json.dump(edits, f, indent=1)
         n = write_reviewed(a.work)
         print(f"{changed} rows updated in {rp}; {n} accepted rows -> segments_reviewed.csv. Reload the review page.")
 

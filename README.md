@@ -88,8 +88,12 @@ rows with the purple bezel, from a frame-by-frame bezel test (leading sofa audio
 sofa shots become cuts). Check the result on the review page and delete any cut that is wrong.
 For rows with no purple bezel (projector, another TV, full screen, a play on stage)
 `python scripts/vision_cuts.py --source /path/to/episodes --todo` finds the shot changes locally, puts one
-frame per shot on a numbered contact sheet and asks a Claude model (set `ANTHROPIC_API_KEY`) which shots are
-the programme; the review panel then shows the shots as clickable buttons so a wrong call is one click away.
+frame per shot on a numbered contact sheet with the subtitle lines spoken in each, and asks a Claude model (set
+`ANTHROPIC_API_KEY`, or `--key-file`) which shots are the programme and whether its sound carries on under the
+room shots. It trims the ends, extends into the padding when the programme continues there, freezes the picture
+where the programme's audio runs under a reaction shot and cuts where it does not, then renders the finished
+clip to `work/preview/<id>.mp4`; the review panel plays it, shows the shots as clickable buttons (green /
+amber = frozen / grey = cut) and has a "re-render" button for after you fix anything by hand.
 
 Then open http://localhost:8765/player/ : MAIN (everything shuffled, an episode's clips kept together) plus
 I&S · KRUSTY, CHANNEL 6 NEWS, TROY McCLURE and MISC, each running on

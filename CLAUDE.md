@@ -14,7 +14,8 @@ scripts/review_server.py + review.html   review page with real video scrubbing (
                                   also serves /player/ and /clips/
 scripts/auto_cuts.py              frame-accurate bezel test per accepted row -> holds (leading audio) + cuts (sofa shots)
 scripts/vision_cuts.py            same for rows without a pixel cue: local shot detection + one Claude vision call
-                                  per segment (contact sheet in work/vision/) -> holds/cuts/shots; needs ANTHROPIC_API_KEY
+                                  per segment (contact sheet in work/vision/ + subtitle lines per shot) -> trim /
+                                  extend / holds / cuts, renders work/preview/<id>.mp4; needs ANTHROPIC_API_KEY
 player/index.html                 channel-hopper fed by clips/index.csv (channels per category + MIX + OUTLIERS,
                                   wall-clock schedule, optional purple TV frame overlay); drop files still works
 refs/                             reference PNGs for hash matching (filename = label); empty so far
@@ -86,10 +87,17 @@ Bumblebee Man, adverts, "we now return to" bumpers), for a channel-hopping simul
    does the same for rows the cues can't see (projector, other TVs, full screen, theatre stage): shot
    changes are found locally (frame-to-frame difference, hard cuts land within a frame of hand cuts), one
    frame per shot goes on a numbered contact sheet (`work/vision/<id>.jpg`) and one Claude call per segment
-   (`--model`, default claude-opus-5, ~1500 tokens) says which shots are the programme. Leading room shots
-   -> hold, interior/trailing -> cuts; programme found inside `--pad` (3 s) either side moves start/end out.
-   Rows get `auto_cue=vision`, `shots` and `vision` (note): the panel shows a clickable shot strip (green =
-   programme) that seeks to a shot's first frame, and a link to the sheet. `--sheets-only` needs no key.
+   (`--model`, default claude-opus-5, ~1500 tokens) says which shots are the programme and, for the room
+   shots, whether the programme's sound carries on underneath (it reads the subtitle lines per shot). Room
+   shots at either end are trimmed off (or, with programme audio, held on the first/last programme frame,
+   `a*-b` at the end); interior room shots become a hold (programme audio) or a cut (watchers / silence);
+   programme found inside `--pad` (3 s) either side moves start/end out. Rows get `auto_cue=vision`, `shots`
+   (state 1 programme, 2 hold, 0 cut/trim), `vision` (note) and `preview`; the script renders
+   `work/preview/<id>.mp4` with `extract_clips.render_clip` (skip with `--no-render`). The panel shows the
+   shot strip (green / amber / grey, click = seek to first frame), the sheet link, and the rendered clip
+   with a "re-render with current edits" button (POST `/render`, encodes from the unsaved field values).
+   review.json is re-read and merged per row on every write, so Ctrl+C is safe and the page can stay open.
+   `--sheets-only` needs no key; `--dry-run` calls the API but writes nothing.
 4. `python scripts/extract_clips.py --source <eps> --catalog work/segments_reviewed.csv --precise`
    → `clips/S05E07_<id>_<category>.mp4` + `clips/index.csv` (carries dur, method, cutaways, note, holds, cuts).
 5. Player: http://localhost:8765/player/ (or `python -m http.server` at repo root → /player/). Channels
