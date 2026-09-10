@@ -103,4 +103,5 @@ over clips that were shot full-screen.
 To put the same thing on GitHub Pages, `python scripts/deploy_pages.py` builds a `gh-pages` branch holding
 `player/`, `clips/` and a redirecting `index.html`, and force-pushes it (the clips go public; the code branch
 stays clip-free). Set Pages to that branch once and the player lives at `https://<you>.github.io/<repo>/`.
-It fits a phone held sideways; tap the screen once to switch the sound on.
+It fits a phone held sideways; tap the screen once to switch the sound on, and FULL fills the whole display
+with the screen in the middle and the knobs down the right.
