@@ -26,6 +26,7 @@ are left alone unless --force (stashed in prev_holds/prev_cuts, `r` on the page 
 Needs ANTHROPIC_API_KEY in the environment (or --key-file). No SDK: plain HTTPS to the Messages
 API. Roughly one image (~1500 tokens) + a short JSON reply per segment. --sheets-only builds
 the contact sheets and stops (no key needed) so you can check the shot detection first.
+review.json is saved after every row, so the run can be stopped (Ctrl+C) at any time without loss.
 RELOAD the review page after running (the page posts only rows it edited, server merges per row).
 """
 import argparse, base64, csv, io, json, os, re, subprocess, sys, time, urllib.request
@@ -240,6 +241,8 @@ def main():
         if ne > end + 1e-3:
             e["end"] = hms(ne)
         changed += 1
+        with open(rp, "w", encoding="utf-8") as f:      # after every row, so a stopped run keeps its work
+            json.dump(edits, f, indent=1)
     if usage["input_tokens"]:
         print(f"\ntokens: {usage['input_tokens']} in, {usage['output_tokens']} out ({a.model})")
     if changed:
