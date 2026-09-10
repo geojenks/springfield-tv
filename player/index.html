@@ -15,7 +15,8 @@
     font-family:"Courier New",Courier,monospace;color:var(--cream);overflow:hidden}
   body{display:flex;align-items:center;justify-content:center;padding:16px}
 
-  .tv{position:relative;width:min(94vw,720px);aspect-ratio:4/3;
+  /* fit the height too, so a phone held sideways gets the whole set (100dvh: the browser chrome comes and goes) */
+  .tv{position:relative;width:min(94vw,720px,calc((100dvh - 32px) * 4 / 3));aspect-ratio:4/3;
     background:linear-gradient(160deg,var(--tv-light),var(--tv) 45%,var(--tv-dark));
     border:5px solid var(--ink);border-radius:22px;
     box-shadow:0 30px 60px #000a,inset 0 3px 0 #8a7bad,inset 0 -5px 0 #2a2140;
@@ -79,6 +80,12 @@
   .speaker{width:86%;height:11%;background:repeating-linear-gradient(0deg,var(--ink) 0 3px,#0000 3px 9px);
     border-radius:4px;opacity:.75}
   input[type=file]{display:none}
+  /* short viewports (phone in landscape): no aerial or feet sticking out, tighter body padding */
+  @media (max-height:520px){
+    body{padding:6px}
+    .tv{width:min(96vw,calc((100dvh - 12px) * 4 / 3))}
+    .tv::before,.tv::after,.foot{display:none}
+  }
   @media (prefers-reduced-motion:reduce){.dial .knob{transition:none}}
 </style>
 </head>
@@ -121,7 +128,7 @@
 <script>
 // Channels come from ../clips/index.csv (written by extract_clips.py) when the page is served over
 // http (review_server.py serves /player/ and /clips/; `python -m http.server` from the repo root
-// works too). Each channel runs on a wall clock, so switching lands mid-programme like real TV.
+// works too; scripts/deploy_pages.py publishes the same layout to GitHub Pages). Each channel runs on a wall clock, so switching lands mid-programme like real TV.
 // Dropping files on the screen still works and makes a single FILES channel.
 const $ = id => document.getElementById(id);
 const video = $('video'), noise = $('noise'), osd = $('osd'), osdCh = $('osdCh'), osdName = $('osdName'),
@@ -191,7 +198,9 @@ function play(i, offset) {
     video.onloadedmetadata = () => {                              // seek only once the duration is known
       const off = offset || 0;
       video.currentTime = off < video.duration - 1 ? off : 0;
-      video.play().catch(() => {});
+      video.play().catch(() => {                                  // phones: no sound before a tap
+        $('emptyMsg').textContent = 'tap to switch on'; empty.querySelector('small').style.display = 'none'; empty.style.display = '';
+      });
     };
     applyFrame(c);
     osdCh.textContent = `CH ${ch + 1} ${chan.name}`;
@@ -267,7 +276,7 @@ setVolume(volume, false);
 dial.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tune(1); } };
 shuffleBtn.onclick = () => { shuffle = !shuffle; shuffleBtn.classList.toggle('on', shuffle); if (channels.length) { const c = channels[ch].clips; buildChannels(channels.find(x => x.mix).clips); tune(0); } };
 frameBtn.onclick = () => { frameMode = { auto: 'on', on: 'off', off: 'auto' }[frameMode]; frameBtn.textContent = 'FRAME: ' + frameMode.toUpperCase(); if (ch >= 0) applyFrame(channels[ch].order[cur]); };
-empty.onclick = () => picker.click();
+empty.onclick = () => { if (ch >= 0) { empty.style.display = 'none'; video.play().catch(() => {}); } else picker.click(); };
 picker.onchange = e => loadFiles(e.target.files);
 document.addEventListener('keydown', e => {
   if (e.key === 'ArrowRight') step(1);

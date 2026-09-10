@@ -99,3 +99,8 @@ Then open http://localhost:8765/player/ : MAIN (everything shuffled, an episode'
 I&S · KRUSTY, CHANNEL 6 NEWS, TROY McCLURE and MISC, each running on
 a wall clock so changing channel lands mid-programme; the FRAME button draws the in-show purple TV frame
 over clips that were shot full-screen.
+
+To put the same thing on GitHub Pages, `python scripts/deploy_pages.py` builds a `gh-pages` branch holding
+`player/`, `clips/` and a redirecting `index.html`, and force-pushes it (the clips go public; the code branch
+stays clip-free). Set Pages to that branch once and the player lives at `https://<you>.github.io/<repo>/`.
+It fits a phone held sideways; tap the screen once to switch the sound on.

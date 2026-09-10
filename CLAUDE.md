@@ -16,6 +16,7 @@ scripts/auto_cuts.py              frame-accurate bezel test per accepted row -> 
 scripts/vision_cuts.py            same for rows without a pixel cue: local shot detection + one Claude vision call
                                   per segment (contact sheet in work/vision/ + subtitle lines per shot) -> trim /
                                   extend / holds / cuts, renders work/preview/<id>.mp4; needs ANTHROPIC_API_KEY
+scripts/deploy_pages.py           builds the gh-pages branch (player/ + clips/ + redirect) and force-pushes it
 player/index.html                 channel-hopper fed by clips/index.csv (channels per category + MIX + OUTLIERS,
                                   wall-clock schedule, optional purple TV frame overlay); drop files still works
 refs/                             reference PNGs for hash matching (filename = label); empty so far
@@ -109,6 +110,10 @@ Bumblebee Man, adverts, "we now return to" bumpers), for a channel-hopping simul
    mid-programme. Categories in use: itchy_scratchy, krusty, kent_brockman, news, troy_mcclure, mcbain,
    advert, bumper, screen (unnamed show; relabel on the review page when the dialogue makes it clear).
    FRAME button (`f`): auto draws the purple in-show TV frame over clips whose method isn't `bezel`.
+   Public copy: https://geojenks.github.io/springfield-tv/ (redirects to player/). `python scripts/deploy_pages.py`
+   rebuilds the `gh-pages` branch with the same layout (player/index.html, clips/*.mp4 + index.csv, .nojekyll)
+   and force-pushes it; run it after extract_clips. Phones: the set also fits the viewport height (landscape),
+   aerial/feet hidden under 520 px tall, and a "tap to switch on" overlay appears when autoplay with sound is refused.
    Rows with holds/cuts are re-encoded (`edit_filter`: trim pieces + tpad clone + concat) even
    without `--precise`.
 
