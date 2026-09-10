@@ -177,11 +177,15 @@ def merge_runs(shots):
     return m
 
 
-def edit_from_shots(shots):
+def edit_from_shots(shots, fps=30.0):
     """[(t0, t1, state)] absolute times, state 1 programme / 2 room+programme audio / 0 room ->
     (holds, cuts, start, end) or None. Leading and trailing state-0 shots are trimmed off;
     leading/trailing state-2 runs become holds (frozen on the first / last programme frame);
-    interior gaps become one hold or one cut by which state covers more of the gap."""
+    interior gaps become one hold or one cut by which state covers more of the gap.
+    Shot times are the first frame of the new shot, so a hold `a-b` ending on a boundary freezes
+    on the first programme frame (edit_filter takes the frame at b), while a trailing `a*-b`
+    hold must start half a frame before the boundary so the frame at a is the last programme
+    frame, not the first room frame."""
     runs = merge_runs(shots)
     on = [i for i, r in enumerate(runs) if r[2] == 1]
     if not on:
@@ -195,12 +199,13 @@ def edit_from_shots(shots):
     end = runs[last][1]
     if last + 1 < len(runs) and runs[last + 1][2] == 2:       # programme audio after the picture
         end = runs[last + 1][1]
-        holds.append(f"{hms(runs[last][1])}*-{hms(end)}")
+        holds.append(f"{hms(runs[last][1] - 0.5 / fps)}*-{hms(end)}")
     for i, j in zip(on, on[1:]):                              # interior gaps
         gap = runs[i + 1:j]
         a, b = gap[0][0], gap[-1][1]
         prog = sum(r[1] - r[0] for r in gap if r[2] == 2)
         (holds if prog >= (b - a) / 2 else cuts).append(f"{hms(a)}-{hms(b)}")
+    holds.sort(); cuts.sort()
     return "; ".join(holds), "; ".join(cuts), start, end
 
 
@@ -280,7 +285,7 @@ def main():
                 continue
             state[int(s["n"])] = 1 if s.get("on") else (2 if str(s.get("audio", "")).lower().startswith("prog") else 0)
         shots = [[round(x, 3), round(y, 3), state.get(i + 1, 0)] for i, (x, y) in enumerate(times)]
-        res = edit_from_shots([(x, y, o) for x, y, o in shots])
+        res = edit_from_shots([(x, y, o) for x, y, o in shots], fps)
         if res is None:
             print(" -> model saw no programme shots, skipped"); continue
         holds, cuts, ns, ne = res

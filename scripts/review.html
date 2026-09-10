@@ -142,7 +142,7 @@ function toggle(id, at) {
           &nbsp; <button onclick="keepCuts()" title="k">✓ keep cuts (k)</button> <button onclick="undoCuts()" title="u">undo all cuts → whole clip (u)</button>${(edits[id] || {}).prev_holds != null ? ' <button onclick="revertCuts()" title="r">revert to my edit (r)</button>' : ''}</div>
         ${(edits[id] || {}).shots ? '<div class=row><span class=lab>shots (vision_cuts.py; green = programme, amber = room but programme audio → frozen, grey = room → cut/trimmed; click = go to first frame, then ( ) { } as usual):</span><br>' +
           edits[id].shots.map((h, i) => `<button class="shot ${h[2] === 1 ? 'on' : h[2] === 2 ? 'hold' : 'off'}" title="${hms(h[0])} → ${hms(h[1])}" onclick="go(${h[0]})">${i + 1}</button>`).join('') + ' <a href="/work/vision/' + id + '.jpg" target=_blank class=lab>sheet</a></div>' : ''}
-        <div class=row><span class=lab>rendered result (start/end/holds/cuts applied, as extract_clips will make it):</span>
+        <div class=row><span class=lab>rendered result (start/end/holds/cuts applied, exactly what extract_clips will make; ▶ play segment is only an approximation):</span>
           <button id=rr onclick="rerender()">${(edits[id] || {}).preview ? '↻ re-render with current edits' : '⚙ render clip'}</button>
           ${(edits[id] || {}).preview ? '<video class=preview controls preload=none id=pv src="/work/preview/' + id + '.mp4?' + Date.now() + '"></video>' : ''}</div>
         <div class=row><button onclick="step(-5)">−5 s</button><button onclick="step(-1)">−1 s</button><button onclick="step(-1/FPS)">−1 f</button>
@@ -178,7 +178,7 @@ let holdRun = 0;
 async function playSeg() {
   if (!open) return; const v = open.v, e = sec(ee.value), holds = holdsOf(), cuts = cutsOf(), run = ++holdRun;
   const frames = [];                                        // capture the frame at each hold end
-  for (const h of holds) { v.pause(); await seekTo(v, h[2] ? h[0] : h[1]); const c = document.createElement('canvas'); c.width = 480; c.height = 360; c.getContext('2d').drawImage(v, 0, 0, 480, 360); frames.push(c); }
+  for (const h of holds) { v.pause(); await seekTo(v, h[2] ? h[0] : h[1] + 0.5 / FPS); const c = document.createElement('canvas'); c.width = 480; c.height = 360; c.getContext('2d').drawImage(v, 0, 0, 480, 360); frames.push(c); }
   if (run !== holdRun) return;
   go(sec(es.value)); const run2 = ++holdRun; pp.textContent = 'pause';
   try { await v.play(); } catch (err) { return; }
