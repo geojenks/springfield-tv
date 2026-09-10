@@ -50,7 +50,10 @@ def ranges(txt, start, end):
         if "-" not in h:
             continue
         l, r = h.split("-", 1)
-        a, b = secs(l.replace("*", "").strip()), secs(r.replace("*", "").strip())
+        try:
+            a, b = secs(l.replace("*", "").strip()), secs(r.replace("*", "").strip())
+        except ValueError:
+            print(f"!! unreadable range {h.strip()!r} ignored", file=sys.stderr); continue
         a, b = max(a, start) - start, min(b, end) - start
         if b > a:
             out.append((a, b, "*" in l))
