@@ -9,7 +9,7 @@ body{font:13px system-ui;background:#111;color:#ddd;margin:0;padding:0 12px 60px
 .c.accept{background:#0f1f10}.c.reject{opacity:.45}
 .c img.t{width:100%;display:block;cursor:pointer}
 .lab{color:#888;font-size:11px}
-.m{font-weight:bold}.m.bezel{color:#8f8}.m.mask{color:#6cf}.m.screen_only{color:#c9f}.m.no_yellow{color:#fc6}.m.anchor_only{color:#f66}
+.m{font-weight:bold}.m.manual{color:#fff}.m.bezel{color:#8f8}.m.mask{color:#6cf}.m.screen_only{color:#c9f}.m.no_yellow{color:#fc6}.m.anchor_only{color:#f66}
 .strip{grid-column:1/-1}.strip img{width:100%;height:14px;image-rendering:pixelated}
 .panel{grid-column:1/-1;display:none;grid-template-columns:480px 1fr;gap:12px;background:#1a1a1a;padding:10px;border-radius:6px}
 .c.open .panel{display:grid}
@@ -33,7 +33,7 @@ kbd{background:#333;border:1px solid #555;border-radius:3px;padding:0 4px;font:1
   <select id=fs><option value="">all statuses</option><option value="todo">todo</option><option value="accept">accepted</option><option value="reject">rejected</option><option value="auto">auto-cut, to check</option></select>
   <span id=count></span>
   <span id=status></span>
-  <span class=lab>keys when a row is open: <kbd>,</kbd><kbd>.</kbd> ±1 frame &nbsp;<kbd>←</kbd><kbd>→</kbd> ±1 s &nbsp;<kbd>shift</kbd> ±5 s &nbsp;<kbd>space</kbd> play &nbsp;<kbd>[</kbd><kbd>]</kbd> set start/end &nbsp;<kbd>{</kbd><kbd>}</kbd> hold start/end <kbd>v</kbd> hold start→here &nbsp;<kbd>(</kbd><kbd>)</kbd> cut start/end &nbsp;<kbd>k</kbd> keep cuts <kbd>u</kbd> undo cuts <kbd>r</kbd> revert to my edit &nbsp;<kbd>a</kbd> accept <kbd>x</kbd> reject &nbsp;<kbd>n</kbd> next</span>
+  <span class=lab>keys when a row is open: <kbd>,</kbd><kbd>.</kbd> ±1 frame &nbsp;<kbd>←</kbd><kbd>→</kbd> ±1 s &nbsp;<kbd>shift</kbd> ±5 s &nbsp;<kbd>space</kbd> play &nbsp;<kbd>[</kbd><kbd>]</kbd> set start/end &nbsp;<kbd>{</kbd><kbd>}</kbd> hold start/end <kbd>v</kbd> hold start→here <kbd>*</kbd> flip which frame a hold freezes on &nbsp;<kbd>(</kbd><kbd>)</kbd> cut start/end &nbsp;<kbd>k</kbd> keep cuts <kbd>u</kbd> undo cuts <kbd>r</kbd> revert to my edit &nbsp;<kbd>a</kbd> accept <kbd>x</kbd> reject &nbsp;<kbd>n</kbd> next</span>
 </div>
 <div id=list></div>
 <script>
@@ -66,6 +66,8 @@ async function load() {
   for (const id in edits) {                       // migrate old single video_from into holds
     const e = edits[id]; if (e.video_from && !e.holds && e.start) e.holds = e.start + '-' + e.video_from; delete e.video_from;
   }
+  for (const id in edits) if (edits[id].new && !rows.some(r => r.id === id)) rows.push(synth(id, edits[id]));
+  rows.sort((p, q) => p.episode.localeCompare(q.episode) || sec(p.start) - sec(q.start));
   for (const r of rows) {                         // prefill cutaways flag from screen_spans gaps
     if (edits[r.id] && 'cutaways' in edits[r.id]) continue;
     const gaps = (r.screen_spans || '').split(';').filter(Boolean).length - 1;
@@ -74,6 +76,16 @@ async function load() {
   render();
 }
 
+// a row added by hand on this page (no thumbs, no anchor); the server's load_rows builds the same
+const synth = (id, e) => ({ id, episode: e.episode, category: e.category || '', anchor: '', start: e.start, end: e.end, dur: '', method: 'manual', confidence: '', screen_spans: '', anchor_text: e.note || '(added by hand)' });
+function newRow() {
+  if (!open) return; const r = open.r, t = open.v.currentTime;
+  const n = Math.max(-1, ...rows.filter(x => x.episode === r.episode).map(x => +x.id.split('-').pop() || 0)) + 1;
+  const id = `${r.episode}-${ec.value || r.category}-${String(n).padStart(2, '0')}`;
+  Object.assign(E(id), { new: true, episode: r.episode, category: ec.value || r.category, start: hms(t), end: hms(t + 10) });
+  rows.push(synth(id, E(id))); rows.sort((p, q) => p.episode.localeCompare(q.episode) || sec(p.start) - sec(q.start));
+  save(id); closePanel(); render(); toggle(id);
+}
 function render() {
   const q = document.getElementById('q').value.toLowerCase(), fm = document.getElementById('fm').value, fs = document.getElementById('fs').value;
   const L = document.getElementById('list'); L.innerHTML = '';
@@ -90,11 +102,11 @@ function render() {
       <span class="m ${r.method.split('+')[0]}">${r.method}</span> conf ${r.confidence}<br>
       <span class=big>${cur(r, 'start')} → ${cur(r, 'end')}</span> <span class=lab>(${(sec(cur(r, 'end')) - sec(cur(r, 'start'))).toFixed(1)} s) anchor ${r.anchor}</span><br>
       <span class=lab>${esc(r.anchor_text.slice(0, 160))}</span><br>
-      <span class=lab>${r.screen_spans ? 'on screen: ' + r.screen_spans.split(';').length + ' span(s)' : ''} ${(edits[r.id] || {}).cutaways ? '· <b style="color:#fc6">cutaways</b>' : ''} ${(edits[r.id] || {}).auto_cuts ? '· <b style="color:#6cf">auto-cut' + (edits[r.id].auto_frac != null ? ' ' + Math.round(edits[r.id].auto_frac * 100) + '% bezel' : '') + ', to check</b>' : ''} ${(edits[r.id] || {}).holds ? '· <b style="color:#fc6">holds</b> ' + esc(edits[r.id].holds) : ''} ${(edits[r.id] || {}).cuts ? '· <b style="color:#f66">cuts</b> ' + esc(edits[r.id].cuts) : ''} ${(edits[r.id] || {}).note ? '· ' + esc(edits[r.id].note) : ''}</span><br>
+      <span class=lab>${r.screen_spans ? 'on screen: ' + r.screen_spans.split(';').length + ' span(s)' : ''} ${(edits[r.id] || {}).cutaways ? '· <b style="color:#fc6">cutaways</b>' : ''} ${(edits[r.id] || {}).auto_cuts ? '· <b style="color:#6cf">auto-cut' + (edits[r.id].auto_frac != null ? ' ' + Math.round(edits[r.id].auto_frac * 100) + '% ' + (edits[r.id].auto_cue || 'bezel') : '') + ', to check</b>' : ''} ${(edits[r.id] || {}).holds ? '· <b style="color:#fc6">holds</b> ' + esc(edits[r.id].holds) : ''} ${(edits[r.id] || {}).cuts ? '· <b style="color:#f66">cuts</b> ' + esc(edits[r.id].cuts) : ''} ${(edits[r.id] || {}).note ? '· ' + esc(edits[r.id].note) : ''}</span><br>
       <button onclick="toggle('${r.id}')">▶ watch / edit</button>
       <button onclick="setStatus('${r.id}','accept')">✓</button> <button onclick="setStatus('${r.id}','reject')">✗</button></div>` +
-      labs.map(l => `<div><img class=t src="/work/seg/${r.episode}/${r.id}_${l}.jpg" onclick="toggle('${r.id}','${l}')"><div class=lab>${l}</div></div>`).join('') +
-      `<div class=strip><img src="/work/seg/${r.episode}/${r.id}_strip.png"></div><div class=panel></div>`;
+      labs.map(l => `<div><img class=t src="/work/seg/${r.episode}/${r.id}_${l}.jpg" onerror="this.style.visibility='hidden'" onclick="toggle('${r.id}','${l}')"><div class=lab>${l}</div></div>`).join('') +
+      `<div class=strip><img src="/work/seg/${r.episode}/${r.id}_strip.png" onerror="this.style.display='none'"></div><div class=panel></div>`;
     L.appendChild(d);
   }
   document.getElementById('count').textContent = k + ' / ' + rows.length + ' rows';
@@ -113,10 +125,12 @@ function toggle(id, at) {
       <div class=ctl>
         <div class=row>start <input type=text id=es value="${cur(r, 'start')}"> <button onclick="go(sec(es.value))">go</button> <button onclick="setHere('start')">[ set start = here</button>
           &nbsp; end <input type=text id=ee value="${cur(r, 'end')}"> <button onclick="go(sec(ee.value))">go</button> <button onclick="setHere('end')">] set end = here</button></div>
-        <div class=row>holds <input class=holds type=text id=eh value="${esc((edits[id] || {}).holds || '')}" placeholder="a-b; a-b  (picture frozen on the frame at b, audio continues)" onchange="onEdit()">
+        <div class=row>holds <input class=holds type=text id=eh value="${esc((edits[id] || {}).holds || '')}" placeholder="a-b; a*-b  (picture frozen on the frame at b, or at a when a is starred; audio continues)" onchange="onEdit()">
           <button onclick="holdMark()">{ hold start = here</button> <button onclick="holdEnd()">} hold end = here</button> <button onclick="holdFromStart()">v hold start→here</button>
           <button onclick="holdsFromGaps()">prefill from screen gaps</button> <button onclick="eh.value='';onEdit()">clear</button>
-          <span class=lab>picture frozen on the frame at b, audio continues</span></div>
+          <br><span class=lab>audio continues, picture frozen on</span> <select id=hf><option value=end>the frame at b (end of the hold)</option><option value=start>the frame at a (start of the hold)</option></select>
+          <button onclick="holdFlip()" title="*">* flip the hold at the playhead</button>
+          <span class=lab>a starred a-b freezes on its start frame</span></div>
         <div class=row>cuts &nbsp; <input class=holds type=text id=ecx value="${esc((edits[id] || {}).cuts || '')}" placeholder="a-b; a-b  (video AND audio removed; the show joins up)" onchange="onEdit()">
           <button onclick="cutMark()">( cut start = here</button> <button onclick="cutEnd()">) cut end = here</button> <button onclick="ecx.value='';onEdit()">clear</button>
           <span class=lab>both preview with ▶ play segment</span>
@@ -128,7 +142,8 @@ function toggle(id, at) {
         <div class=row>category <input type=text id=ec value="${cur(r, 'category')}" onchange="onEdit()">
           <label><input type=checkbox id=ecut ${(edits[id] || {}).cutaways ? 'checked' : ''} onchange="onEdit()"> cutaways to the sofa while TV audio continues</label></div>
         <div class=row><input class=note type=text id=en placeholder="note" value="${esc((edits[id] || {}).note || '')}" onchange="onEdit()"></div>
-        <div class=row><button onclick="setStatus('${id}','accept')">✓ accept (a)</button> <button onclick="setStatus('${id}','reject')">✗ reject (x)</button> <button onclick="nextRow()">next (n)</button></div>
+        <div class=row><button onclick="setStatus('${id}','accept')">✓ accept (a)</button> <button onclick="setStatus('${id}','reject')">✗ reject (x)</button> <button onclick="nextRow()">next (n)</button>
+          &nbsp; <button onclick="newRow()" title="a segment the scan missed: a fresh row for this episode, start = playhead">+ new row at playhead</button></div>
       </div>`;
     const v = p.querySelector('video');
     v.addEventListener('timeupdate', tick); v.addEventListener('seeked', tick);
@@ -144,14 +159,16 @@ function tick() { if (open) tc.textContent = hms(open.v.currentTime) + '  (' + M
 function go(t) { if (open) { holdRun++; hc.style.display = 'none'; open.v.pause(); open.v.currentTime = Math.max(0, t); pp.textContent = 'play'; } }
 function step(dt) { if (open) go(open.v.currentTime + dt); }
 function playPause() { if (!open) return; if (open.v.paused) { open.v.play(); pp.textContent = 'pause'; } else { open.v.pause(); pp.textContent = 'play'; } }
-const rangesOf = el => el.value.split(';').map(x => x.trim()).filter(Boolean).map(x => x.split('-').map(sec)).filter(h => h.length === 2 && h[1] > h[0]).sort((a, b) => a[0] - b[0]);
+// [a, b, atStart]; atStart is true for "a*-b" (hold frozen on the frame at a rather than b)
+const rangesOf = el => el.value.split(';').map(x => x.trim()).filter(Boolean).map(x => { const p = x.split('-'); return [sec(p[0].replace('*', '')), sec((p[1] || '').replace('*', '')), p[0].includes('*')]; }).filter(h => h[1] > h[0]).sort((a, b) => a[0] - b[0]);
+const fmtRange = h => hms(h[0]) + (h[2] ? '*' : '') + '-' + hms(h[1]);
 const holdsOf = () => rangesOf(eh), cutsOf = () => rangesOf(ecx);
 function seekTo(v, t) { return new Promise(res => { const f = () => { v.removeEventListener('seeked', f); res(); }; v.addEventListener('seeked', f); v.currentTime = t; }); }
 let holdRun = 0;
 async function playSeg() {
   if (!open) return; const v = open.v, e = sec(ee.value), holds = holdsOf(), cuts = cutsOf(), run = ++holdRun;
   const frames = [];                                        // capture the frame at each hold end
-  for (const h of holds) { v.pause(); await seekTo(v, h[1]); const c = document.createElement('canvas'); c.width = 480; c.height = 360; c.getContext('2d').drawImage(v, 0, 0, 480, 360); frames.push(c); }
+  for (const h of holds) { v.pause(); await seekTo(v, h[2] ? h[0] : h[1]); const c = document.createElement('canvas'); c.width = 480; c.height = 360; c.getContext('2d').drawImage(v, 0, 0, 480, 360); frames.push(c); }
   if (run !== holdRun) return;
   go(sec(es.value)); const run2 = ++holdRun; pp.textContent = 'pause';
   try { await v.play(); } catch (err) { return; }
@@ -173,8 +190,9 @@ async function playSeg() {
   requestAnimationFrame(loop);
 }
 let holdA = null;
-function addRange(el, a, b) { if (b <= a) return; const hs = rangesOf(el).filter(h => h[1] <= a || h[0] >= b); hs.push([a, b]); hs.sort((x, y) => x[0] - y[0]); el.value = hs.map(h => hms(h[0]) + '-' + hms(h[1])).join('; '); onEdit(); }
-const addHold = (a, b) => addRange(eh, a, b);
+function addRange(el, a, b, atStart) { if (b <= a) return; const hs = rangesOf(el).filter(h => h[1] <= a || h[0] >= b); hs.push([a, b, !!atStart]); hs.sort((x, y) => x[0] - y[0]); el.value = hs.map(fmtRange).join('; '); onEdit(); }
+const addHold = (a, b) => addRange(eh, a, b, hf.value === 'start');
+function holdFlip() { if (!open) return; const t = open.v.currentTime, hs = holdsOf(), h = hs.find(x => t >= x[0] && t < x[1]); if (!h) return; h[2] = !h[2]; eh.value = hs.map(fmtRange).join('; '); onEdit(); }
 let cutA = null;
 function cutMark() { if (!open) return; cutA = open.v.currentTime; document.getElementById('status').textContent = 'cut start ' + hms(cutA) + ' — press ) at the cut end'; }
 function cutEnd() { if (!open || cutA === null) return; addRange(ecx, cutA, open.v.currentTime); cutA = null; }
@@ -193,7 +211,7 @@ function onEdit() {
   e.start = es.value; e.end = ee.value; e.category = ec.value; e.cutaways = ecut.checked; e.note = en.value; e.holds = eh.value.trim(); e.cuts = ecx.value.trim();
   refreshRow(open.id); save(open.id);
 }
-function setStatus(id, s) { E(id).status = s; if (open && open.id === id) onEdit(); else { refreshRow(id); save(id); } }
+function setStatus(id, s) { E(id).status = s; delete E(id).auto_cuts; if (open && open.id === id) onEdit(); else { refreshRow(id); save(id); } }
 function refreshRow(id) {
   const d = document.getElementById('row-' + id); if (!d) return;
   const r = rows.find(x => x.id === id), st = (edits[id] || {}).status || 'todo';
@@ -216,7 +234,7 @@ document.addEventListener('keydown', ev => {
   const m = { ',': -1 / FPS, '.': 1 / FPS, 'ArrowLeft': ev.shiftKey ? -5 : -1, 'ArrowRight': ev.shiftKey ? 5 : 1 };
   if (ev.key in m) { step(m[ev.key]); ev.preventDefault(); }
   else if (ev.key === ' ') { playPause(); ev.preventDefault(); }
-  else if (ev.key === '[') setHere('start'); else if (ev.key === ']') setHere('end'); else if (ev.key === '{') holdMark(); else if (ev.key === '}') holdEnd(); else if (ev.key === 'v') holdFromStart(); else if (ev.key === '(') cutMark(); else if (ev.key === ')') cutEnd();
+  else if (ev.key === '[') setHere('start'); else if (ev.key === ']') setHere('end'); else if (ev.key === '{') holdMark(); else if (ev.key === '}') holdEnd(); else if (ev.key === 'v') holdFromStart(); else if (ev.key === '*') holdFlip(); else if (ev.key === '(') cutMark(); else if (ev.key === ')') cutEnd();
   else if (ev.key === 'a') setStatus(open.id, 'accept'); else if (ev.key === 'x') setStatus(open.id, 'reject');
   else if (ev.key === 'n') nextRow(); else if (ev.key === 'k') keepCuts(); else if (ev.key === 'u') undoCuts(); else if (ev.key === 'r') revertCuts();
 });

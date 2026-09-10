@@ -7,7 +7,9 @@ then open http://localhost:8765/ (review) or http://localhost:8765/player/ (the 
 player, fed by clips/index.csv). The page (scripts/review.html) loads work/segments.csv,
 plays the episode file for each row (range requests, so seeking works), lets you step
 frames, set start/end, mark "holds" (a-b ranges where the picture freezes on the frame at b
-while the audio continues: the I&S theme starting over the sofa, sofa cutaways mid-cartoon),
+while the audio continues: the I&S theme starting over the sofa, sofa cutaways mid-cartoon;
+a*-b freezes on the frame at a instead), add rows by hand (review.json entries with new=true,
+merged into the row list by load_rows),
 "cuts" (a-b ranges removed entirely, video and audio, where the show is asynchronous and joins
 up without the sofa shot), accept/reject, flag cutaways, and saves edits to work/review.json
 and a merged work/segments_reviewed.csv on every change.
@@ -29,14 +31,35 @@ def find_videos(source):
     return vids
 
 
-def write_reviewed(work):
-    """Merge work/review.json into work/segments.csv -> work/segments_reviewed.csv."""
+def _sec(h):
+    p = [float(x) for x in h.split(":")]
+    return p[0] * 3600 + p[1] * 60 + p[2] if len(p) == 3 else p[0] * 60 + p[1] if len(p) == 2 else p[0]
+
+
+def load_rows(work):
+    """(rows, edits): work/segments.csv plus rows added by hand on the review page (review.json
+    entries with new=true carry their own episode/category/start/end; method 'manual')."""
     rp = os.path.join(work, "review.json")
     edits = json.load(open(rp, encoding="utf-8")) if os.path.exists(rp) else {}
     src = os.path.join(work, "segments.csv")
-    if not os.path.exists(src):
+    rows = list(csv.DictReader(open(src, encoding="utf-8"))) if os.path.exists(src) else []
+    fields = list(rows[0].keys()) if rows else ["id", "episode", "category", "anchor", "start", "end", "dur",
+                                                 "method", "confidence", "screen_spans", "anchor_text"]
+    for id, e in edits.items():
+        if e.get("new"):
+            r = {k: "" for k in fields}
+            r.update(id=id, episode=e["episode"], category=e.get("category", ""), start=e["start"], end=e["end"],
+                     method="manual", confidence="", anchor_text=e.get("note", ""))
+            rows.append(r)
+    rows.sort(key=lambda r: (r["episode"], _sec(r["start"])))
+    return rows, edits
+
+
+def write_reviewed(work):
+    """Merge work/review.json into work/segments.csv (+ hand-added rows) -> work/segments_reviewed.csv."""
+    rows, edits = load_rows(work)
+    if not rows:
         return 0
-    rows = list(csv.DictReader(open(src, encoding="utf-8")))
     out = []
     for r in rows:
         e = edits.get(r["id"], {})

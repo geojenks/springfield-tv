@@ -60,18 +60,25 @@ Bumblebee Man, adverts, "we now return to" bumpers), for a channel-hopping simul
    category edit, **cutaways** flag (prefilled when `screen_spans` has gaps), note, and **holds**:
    `a-b; a-b` ranges where the picture freezes on the frame at b while audio continues (`v` =
    hold from start to here for the I&S theme over the sofa; `{` `}` mark a mid-clip sofa cutaway;
-   "prefill from screen gaps" turns the `screen_spans` gaps into holds), and **cuts**: `a-b` ranges
+   "prefill from screen gaps" turns the `screen_spans` gaps into holds; `a*-b` freezes on the frame at a
+   instead, for a sofa shot that runs to the end of the clip: the "picture frozen on" select and `*` flip
+   the hold at the playhead), and **cuts**: `a-b` ranges
    (`(` `)`) removed entirely, video and audio, for cutaways where the show is asynchronous and
    joins up cleanly without the sofa shot. "play segment" previews both (canvas overlay for holds,
    seek-over for cuts). Autosaves to
    `work/review.json`; accepted rows are merged into `work/segments_reviewed.csv`.
+   "+ new row at playhead" adds a segment the scan missed (review.json `new=true` rows, method `manual`;
+   `review_server.load_rows` merges them everywhere). Accept/reject clears the auto_cuts flag.
    `segments.html` (static, tick + export) still exists but the server page supersedes it.
    `python scripts/auto_cuts.py --source <eps> [--all] [--force] [--ids ...]` fills holds/cuts for accepted
    bezel rows from a per-frame bezel test (matches hand cuts to ~0.1–0.3 s; a segment that goes
    full-screen mid-way gets a wrong trailing cut, e.g. S05E10 Kent, so review afterwards). Skips rows
    that already have holds/cuts unless --force, and rows under 50% bezel (--min-frac); `--todo` also does
-   unreviewed bezel rows so they open with cuts prefilled. Touched rows get `auto_cuts=true`: the review
-   page filter "auto-cut, to check" lists them, `k` keeps, `u` undoes every hold/cut (whole clip).
+   unreviewed rows so they open with cuts prefilled (`--only-todo` = just those). `--cue any` adds the
+   mask cue for full-screen programmes drawn with rounded corners (use `--min-gap 12`, it flickers).
+   Touched rows get `auto_cuts=true` + `auto_frac`/`auto_cue`: the review page filter "auto-cut, to check"
+   lists them, `k` keeps, `u` undoes every hold/cut (whole clip), `r` restores a hand edit that `--force`
+   stashed in prev_holds/prev_cuts.
    Reload the review page after running it (the page posts only rows it edited, server merges per row).
 4. `python scripts/extract_clips.py --source <eps> --catalog work/segments_reviewed.csv --precise`
    → `clips/S05E07_<id>_<category>.mp4` + `clips/index.csv` (carries dur, method, cutaways, note, holds, cuts).

@@ -16,7 +16,13 @@ the hand edit in prev_holds/prev_cuts so the review page can revert to it; the r
 auto_cuts=true and auto_frac = fraction of bezel frames) and work/segments_reviewed.csv is rebuilt. RELOAD the review page
 afterwards: an open tab still holds the old edits and would save over these.
 
-  python scripts/auto_cuts.py --source <eps> [--work work] [--all] [--force] [--min-gap 4] [--min-frac 0.5] [--todo] [--ids ID ...]
+  python scripts/auto_cuts.py --source <eps> [--work work] [--all] [--force] [--min-gap 4] [--min-frac 0.5]
+                              [--todo] [--only-todo] [--cue bezel|any] [--ids ID ...]
+
+--cue any also counts a frame as on-screen when it passes the mask cue (screen-POV rounded
+corners of any colour, find_segments.mask_flags), for rows the show draws full-screen with a
+mask rather than the purple set; the mask cue flickers more, so use a longer --min-gap (12).
+The row records which cue was used (auto_cue). --only-todo leaves reviewed rows alone.
 
 Rows where fewer than --min-frac of the frames pass the bezel test are skipped (a full-screen
 programme would otherwise get most of itself cut). On the review page the "auto-cut, to check"
@@ -26,22 +32,14 @@ import argparse, csv, json, os, subprocess, sys
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from find_segments import bezel_flags, W, H
-from extract_clips import secs, find_source
-from review_server import write_reviewed
+from find_segments import bezel_flags, mask_flags, W, H
+from extract_clips import secs, find_source, fps_of
+from review_server import write_reviewed, load_rows
 
 
 def hms(s):
     s = max(0.0, s)
     return f"{int(s // 3600):02d}:{int(s % 3600 // 60):02d}:{s % 60:06.3f}"
-
-
-def fps_of(path):
-    out = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries",
-                          "stream=r_frame_rate", "-of", "csv=p=0", path],
-                         capture_output=True, text=True, check=True).stdout.strip()
-    n, d = out.split("/")
-    return float(n) / float(d)
 
 
 def frames(path, start, dur):
@@ -107,20 +105,26 @@ def main():
                     help="skip a row unless at least this fraction of its frames pass the bezel test")
     ap.add_argument("--todo", action="store_true",
                     help="also unreviewed rows from work/segments.csv, so a fresh row opens with its cuts prefilled")
+    ap.add_argument("--only-todo", action="store_true", help="with --todo: skip rows that have a status")
+    ap.add_argument("--cue", choices=["bezel", "any"], default="bezel",
+                    help="any = bezel or screen mask cue (for full-screen programmes drawn with a mask)")
     ap.add_argument("--dry-run", action="store_true")
     a = ap.parse_args()
 
     rp = os.path.join(a.work, "review.json")
     edits = json.load(open(rp, encoding="utf-8")) if os.path.exists(rp) else {}
     rows = list(csv.DictReader(open(os.path.join(a.work, "segments_reviewed.csv"), encoding="utf-8")))
+    if a.only_todo:
+        rows = []
     if a.todo:
         seen = {r["id"] for r in rows}
-        for r in csv.DictReader(open(os.path.join(a.work, "segments.csv"), encoding="utf-8")):
+        for r in load_rows(a.work)[0]:
             e = edits.get(r["id"], {})
-            if r["id"] in seen or e.get("status") == "reject":
+            if r["id"] in seen or e.get("status") == "reject" or (a.only_todo and e.get("status")):
                 continue
             r = dict(r, start=e.get("start") or r["start"], end=e.get("end") or r["end"])
             rows.append(r)
+    flags_of = bezel_flags if a.cue == "bezel" else (lambda fr: bezel_flags(fr) | mask_flags(fr))
     fps_cache, changed = {}, 0
     for r in rows:
         if a.ids and r["id"] not in a.ids:
@@ -137,19 +141,20 @@ def main():
         fps = fps_cache.setdefault(src, fps_of(src))
         start, end = secs(r["start"]), secs(r["end"])
         fr = frames(src, start, end - start)
-        bz = despeckle(bezel_flags(fr), a.min_gap)
+        bz = despeckle(flags_of(fr), a.min_gap)
         holds, cuts = auto_edit(bz, start, fps)
         frac = bz.mean() if len(bz) else 0
         if holds is None or frac < a.min_frac:
-            print(f"-- {r['id']}: only {frac:.0%} bezel frames ({len(fr)} frames), skipped"); continue
+            print(f"-- {r['id']}: only {frac:.0%} {a.cue} frames ({len(fr)} frames), skipped"); continue
         if not holds and not cuts:
             print(f"-- {r['id']}: {frac:.0%} bezel, nothing to cut"); continue
-        print(f"{r['id']}: {len(fr)} frames, {frac:.0%} bezel; holds [{holds}] cuts [{cuts}]")
+        print(f"{r['id']}: {len(fr)} frames, {frac:.0%} {a.cue}; holds [{holds}] cuts [{cuts}]")
         if a.dry_run:
             continue
         if manual and (holds, cuts) != (e.get("holds", ""), e.get("cuts", "")):   # keep the hand edit for "revert"
             e["prev_holds"], e["prev_cuts"] = e.get("holds", ""), e.get("cuts", "")
         e["holds"], e["cuts"], e["auto_cuts"], e["auto_frac"] = holds, cuts, True, round(float(frac), 2)
+        e["auto_cue"] = "bezel" if a.cue == "bezel" else "screen"
         changed += 1
     if changed:
         with open(rp, "w", encoding="utf-8") as f:
