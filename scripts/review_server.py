@@ -134,7 +134,9 @@ class Handler(SimpleHTTPRequestHandler):
     def render(self):
         """Body {id, start, end, holds, cuts}: encode that row as it is now (the page sends the
         unsaved field values) to work/preview/<id>.mp4 and mark preview=true in review.json."""
-        from extract_clips import render_clip, secs, fps_of
+        import importlib, extract_clips
+        importlib.reload(extract_clips)               # pick up edits to the cutter without restarting the server
+        render_clip, secs, fps_of = extract_clips.render_clip, extract_clips.secs, extract_clips.fps_of
         n = int(self.headers.get("Content-Length", 0))
         d = json.loads(self.rfile.read(n).decode("utf-8"))
         rid = re.sub(r"[^\w.-]", "", d.get("id", ""))
