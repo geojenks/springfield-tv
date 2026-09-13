@@ -66,6 +66,9 @@ def edit_filter(holds, cuts, start, end, fps=30.0):
     split into pieces that begin at a hold's end b and run to the next hold's start; each is
     front-padded with clones of its first frame for the hold's length. A hold written `a*-b`
     instead back-pads the piece that ends at a with clones of its last frame (the frame at a).
+    Holds are applied before cuts: when the frame a hold freezes on lies beyond a cut (hold
+    a-b with a cut ending at b, to keep the audio before the cut under the first frame after
+    it), that frame is cloned on its own for the kept part of the hold.
     Audio is just the kept intervals. Everything is concatenated into [v] and [a].
     """
     dur = end - start
@@ -81,32 +84,51 @@ def edit_filter(holds, cuts, start, end, fps=30.0):
         keep.append((t, dur))
     g, vl, al = [], [], []
     fr = 1.0 / fps
+
+    def piece(t0, t1):
+        vl.append(f"[v{len(vl)}]"); g.append(f"[0:v]trim=start={t0:.3f}:end={t1:.3f},setpts=PTS-STARTPTS{vl[-1]}")
+
+    def frozen(t, length):
+        # `length` seconds of the single frame at t (wherever t is, even inside a cut)
+        vl.append(f"[v{len(vl)}]")
+        g.append(f"[0:v]trim=start={t:.3f}:end={t + 2 * fr:.3f},setpts=PTS-STARTPTS,trim=end_frame=1,"
+                 f"tpad=stop_duration={max(0.0, length - fr):.3f}:stop_mode=clone{vl[-1]}")
+
     for k0, k1 in keep:
         al.append(f"[a{len(al)}]"); g.append(f"[0:a]atrim=start={k0:.3f}:end={k1:.3f},asetpts=PTS-STARTPTS{al[-1]}")
-        # an end-frame hold needs a piece after b to clone from, so it stops 0.2 s short of the interval end
-        inner = [(max(a, k0), min(b, k1 if s else k1 - 0.2), s) for a, b, s in hs if b > k0 and a < k1]
-        inner = [(a, b, s) for a, b, s in inner if b > a]
+        # holds are applied to the source clock first, cuts after: the part of a hold that falls in this
+        # kept interval shows the frame at the hold's own b (or a), even when that frame lies past a cut
+        inner = [(max(a, k0), min(b, k1), s, a, b) for a, b, s in hs if b > k0 and a < k1]
+        inner = [x for x in inner if x[1] > x[0]]
         pos = k0
-        for i, (a, b, s) in enumerate(inner):
+        for i, (a, b, s, a0, b0) in enumerate(inner):
             nxt = inner[i + 1][0] if i + 1 < len(inner) else k1
-            if s:
-                # piece pos..a (extended half a frame so the frame at a is its last), held for the rest of a..b
-                a1 = max(a + fr / 2, pos + fr)
-                vl.append(f"[v{len(vl)}]")
-                g.append(f"[0:v]trim=start={pos:.3f}:end={a1:.3f},setpts=PTS-STARTPTS,"
-                         f"tpad=stop_duration={max(0.0, b - a1):.3f}:stop_mode=clone{vl[-1]}")
+            if s:                                     # a*-b: frozen on the frame at a0
+                if a0 >= k0:
+                    # piece pos..a (extended half a frame so the frame at a is its last), held for the rest of a..b
+                    a1 = max(a + fr / 2, pos + fr)
+                    vl.append(f"[v{len(vl)}]")
+                    g.append(f"[0:v]trim=start={pos:.3f}:end={a1:.3f},setpts=PTS-STARTPTS,"
+                             f"tpad=stop_duration={max(0.0, b - a1):.3f}:stop_mode=clone{vl[-1]}")
+                else:                                 # a0 is before this interval (in a cut): clone it on its own
+                    if a > pos:
+                        piece(pos, a)
+                    frozen(a0, b - a)
                 if nxt > b + fr / 2:
-                    vl.append(f"[v{len(vl)}]"); g.append(f"[0:v]trim=start={b:.3f}:end={nxt:.3f},setpts=PTS-STARTPTS{vl[-1]}")
+                    piece(b, nxt)
                 pos = nxt
                 continue
-            if a > pos:
-                vl.append(f"[v{len(vl)}]"); g.append(f"[0:v]trim=start={pos:.3f}:end={a:.3f},setpts=PTS-STARTPTS{vl[-1]}")
-            vl.append(f"[v{len(vl)}]")
-            g.append(f"[0:v]trim=start={b:.3f}:end={nxt:.3f},setpts=PTS-STARTPTS,"
-                     f"tpad=start_duration={b - a:.3f}:start_mode=clone{vl[-1]}")
+            if a > pos:                               # a-b: frozen on the frame at b0
+                piece(pos, a)
+            if b0 < k1 - fr / 2:                      # b0 inside this interval: front-pad the piece that starts there
+                vl.append(f"[v{len(vl)}]")
+                g.append(f"[0:v]trim=start={b:.3f}:end={nxt:.3f},setpts=PTS-STARTPTS,"
+                         f"tpad=start_duration={b - a:.3f}:start_mode=clone{vl[-1]}")
+            else:                                     # b0 at/after the interval end (past a cut): clone it on its own
+                frozen(b0, b - a)
             pos = nxt
         if pos < k1:
-            vl.append(f"[v{len(vl)}]"); g.append(f"[0:v]trim=start={pos:.3f}:end={k1:.3f},setpts=PTS-STARTPTS{vl[-1]}")
+            piece(pos, k1)
     g.append(f"{''.join(vl)}concat=n={len(vl)}:v=1:a=0[v]")
     g.append(f"{''.join(al)}concat=n={len(al)}:v=0:a=1[a]")
     return ";".join(g)
