@@ -34,7 +34,7 @@ kbd{background:#333;border:1px solid #555;border-radius:3px;padding:0 4px;font:1
 <div class=hdr>
   <b>segment review</b>
   <input id=q placeholder="filter: episode / id / text" size=28>
-  <select id=fm><option value="">all methods</option><option>bezel</option><option>mask</option><option>screen_only</option><option>no_yellow</option><option>anchor_only</option></select>
+  <select id=fm><option value="">all methods</option><option>bezel</option><option>mask</option><option>screen_only</option><option>no_yellow</option><option>anchor_only</option><option>manual</option><option>music</option><option value="!music">all but music</option></select>
   <select id=fs><option value="">all statuses</option><option value="todo">todo</option><option value="accept">accepted</option><option value="reject">rejected</option><option value="auto">auto-cut, to check</option><option value="vision">vision-cut (API), to check</option><option value="visionall">vision-cut, all</option></select>
   <span id=count></span>
   <span id=status></span>
@@ -82,7 +82,7 @@ async function load() {
 }
 
 // a row added by hand on this page (no thumbs, no anchor); the server's load_rows builds the same
-const synth = (id, e) => ({ id, episode: e.episode, category: e.category || '', anchor: '', start: e.start, end: e.end, dur: '', method: 'manual', confidence: '', screen_spans: '', anchor_text: e.note || '(added by hand)' });
+const synth = (id, e) => ({ id, episode: e.episode, category: e.category || '', anchor: '', start: e.start, end: e.end, dur: '', method: e.method || 'manual', confidence: '', screen_spans: '', anchor_text: e.lyrics || e.note || '(added by hand)' });
 function newRow() {
   if (!open) return; const r = open.r, t = open.v.currentTime;
   const n = Math.max(-1, ...rows.filter(x => x.episode === r.episode).map(x => +x.id.split('-').pop() || 0)) + 1;
@@ -97,7 +97,7 @@ function render() {
   let k = 0;
   for (const r of rows) {
     const st = (edits[r.id] || {}).status || 'todo';
-    if (fm && r.method.split('+')[0] !== fm) continue;
+    if (fm && (fm[0] === '!' ? r.method.split('+')[0] === fm.slice(1) : r.method.split('+')[0] !== fm)) continue;
     const ed = edits[r.id] || {};
     if (fs === 'auto' ? !ed.auto_cuts : fs === 'vision' ? !(ed.auto_cuts && ed.auto_cue === 'vision') : fs === 'visionall' ? ed.auto_cue !== 'vision' : (fs && st !== fs)) continue;
     if (q && !(r.id + ' ' + r.anchor_text + ' ' + r.category).toLowerCase().includes(q)) continue;

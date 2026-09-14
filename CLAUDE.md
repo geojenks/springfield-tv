@@ -16,6 +16,10 @@ scripts/auto_cuts.py              frame-accurate bezel test per accepted row -> 
 scripts/vision_cuts.py            same for rows without a pixel cue: local shot detection + one Claude vision call
                                   per segment (contact sheet in work/vision/ + subtitle lines per shot) -> trim /
                                   extend / holds / cuts, renders work/preview/<id>.mp4; needs ANTHROPIC_API_KEY
+scripts/tags.html                 /tags/ on the review server: accepted rows as videos + tag chips -> review.json tags
+scripts/rogue_frames.py           finds 1-3 stray frames next to a hold/cut/clip end; --apply covers them with a tiny hold
+scripts/music_scan.py             ♪ subtitle runs -> `music` tag on accepted rows, new `music` rows tagged music+not_tv
+scripts/find_dups.py              overlapping rows of one episode; --apply rejects the lesser as "dup of <id>"
 scripts/deploy_pages.py           builds the gh-pages branch (player/ + clips/ + redirect) and force-pushes it
 player/index.html                 channel-hopper fed by clips/index.csv (channels per category + MIX + OUTLIERS,
                                   wall-clock schedule, optional purple TV frame overlay); drop files still works
@@ -99,8 +103,29 @@ Bumblebee Man, adverts, "we now return to" bumpers), for a channel-hopping simul
    with a "re-render with current edits" button (POST `/render`, encodes from the unsaved field values).
    review.json is re-read and merged per row on every write, so Ctrl+C is safe and the page can stay open.
    `--sheets-only` needs no key; `--dry-run` calls the API but writes nothing.
+   Three passes once rows are accepted, each a dry run until `--apply`:
+   `python scripts/rogue_frames.py --source <eps> [--ids ...|--all] [--max 3] [--near 2] [--apply --render]`
+   decodes each edited clip with ffmpeg's own frame timestamps (showinfo, `-fps_mode passthrough`, the clock
+   the cutter's trims use), applies holds/cuts virtually, finds shots with `shot_bounds(min_len=1)` and
+   reports runs of ≤ --max frames that start/end within --near frames of a hold/cut edge or the clip's ends
+   (`--anywhere` drops that test, but cartoons have real 1-frame flashes). Fix is always a hold: the frame a
+   hold froze on → move the hold's b/a one frame; run at the clip end or just before a cut → `prev*-b`
+   (consecutive runs merge into one); otherwise `a-b` frozen on the frame after. `--apply` stashes
+   prev_holds/prev_cuts, sets auto_cuts/auto_cue=rogue/`rogue` (list of [time, n, fix]) for the "auto-cut,
+   to check" filter (k keep / r revert).
+   `python scripts/music_scan.py [--seasons 1-9] [--apply]` groups ♪ lines (gap ≤ 6 s, ≥ 3 lines, ≥ 8 s,
+   I&S theme / "they fight and fight" / Simpsons title skipped): a song overlapping an accepted row adds the
+   tag `music` to it; the rest become `SxxEyy-music-NN` rows (new=true, method `music`, status todo, tags
+   music+not_tv, `lyrics`). ~300 of them on S1–9, so the review page method filter has `music` / `all but music`.
+   `python scripts/find_dups.py [--overlap 0.5] [--apply]`: accepted/todo rows of one episode whose shorter
+   span is > 50% inside the other; loser (todo, then less edit work, shorter, later id) is rejected with note
+   "dup of <id>"; different first category tokens are listed only (the user's `music` excerpts inside adverts).
+   **Tags**: http://localhost:8765/tags/ (scripts/tags.html) lists every accepted row with its video (clips/
+   file if extracted, else work/preview, else the episode at #t=start) and a chip per tag in use (grey / green
+   = on, `+ tag` input; names are lowercased, spaces → `_`); POST `/tag {id, tags}` writes `tags` into
+   review.json and regenerates segments_reviewed.csv (`tags` column, '+'-joined). Tags decide channels, see 5.
 4. `python scripts/extract_clips.py --source <eps> --catalog work/segments_reviewed.csv --precise`
-   → `clips/S05E07_<id>_<category>.mp4` + `clips/index.csv` (carries dur, method, cutaways, note, holds, cuts).
+   → `clips/S05E07_<id>_<category>.mp4` + `clips/index.csv` (carries dur, method, cutaways, note, holds, cuts, tags).
 5. Player: http://localhost:8765/player/ (or `python -m http.server` at repo root → /player/). Channels
    (`GROUPS` in player/index.html): MAIN = everything in one big shuffle, then I&S · KRUSTY
    (itchy_scratchy, krusty), CHANNEL 6 NEWS (kent_brockman, news), TROY McCLURE, MISC (advert, bumper,
@@ -109,6 +134,9 @@ Bumblebee Man, adverts, "we now return to" bumpers), for a channel-hopping simul
    channel, ◀▶ / ←→ = clip, each channel runs on a shared wall clock (EPOCH 2026-01-01) so a switch lands
    mid-programme. Categories in use: itchy_scratchy, krusty, kent_brockman, news, troy_mcclure, mcbain,
    advert, bumper, screen (unnamed show; relabel on the review page when the dialogue makes it clear).
+   Tag channels: `TAG_GROUPS` (MUSIC = tags `music`/`song`) come after the category channels; a clip tagged
+   `not_tv` (a song sung in the room, not on a screen) is left out of MAIN and the category channels and only
+   plays on its tag channels.
    FRAME button (`f`): auto draws the purple in-show TV frame over clips whose method isn't `bezel`.
    Public copy: https://geojenks.github.io/springfield-tv/ (redirects to player/). `python scripts/deploy_pages.py`
    rebuilds the `gh-pages` branch with the same layout (player/index.html, clips/*.mp4 + index.csv, .nojekyll)

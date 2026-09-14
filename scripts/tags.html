@@ -1,0 +1,100 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>clip tags</title>
+<style>
+body{font:13px system-ui;background:#111;color:#ddd;margin:0;padding:0 12px 60px}
+.hdr{position:sticky;top:0;background:#111;padding:8px 0;z-index:2;border-bottom:1px solid #333;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.hdr input,.hdr select{background:#222;color:#ddd;border:1px solid #444;padding:4px}
+.lab{color:#888;font-size:11px}
+.c{display:grid;grid-template-columns:320px 1fr;gap:12px;align-items:start;padding:8px 0;border-bottom:1px solid #2a2a2a}
+.c video{width:320px;height:240px;background:#000;display:block}
+.tag{display:inline-block;padding:2px 8px;margin:2px;border-radius:10px;border:1px solid #444;background:#222;color:#777;cursor:pointer;user-select:none}
+.tag.on{background:#264;color:#fff;border-color:#6d8}
+.tag.hot{color:#aaa}
+.hdr .tag{cursor:pointer}.hdr .tag.on{background:#246;border-color:#6ad}
+input.add{background:#222;color:#ddd;border:1px solid #444;padding:2px 6px;width:90px;margin-left:6px}
+b.id{font-size:14px}
+#status{color:#8f8}
+.note{color:#bbb}
+</style>
+<div class=hdr>
+  <b>clip tags</b>
+  <input id=q placeholder="filter: episode / id / text" size=24>
+  <select id=fs><option value="">all rows</option><option value="untagged">untagged</option><option value="clip">has a clip file</option></select>
+  <span class=lab>tag filter:</span><span id=tagfilter></span>
+  <span id=count></span> <span id=status></span>
+  <span class=lab>tags go to work/review.json → segments_reviewed.csv → clips/index.csv (re-run extract_clips to refresh the index). Suggested: music, not_tv (only on tag channels), song, advert, jingle, news, cartoon, live_action…</span>
+</div>
+<div id=list></div>
+<script>
+let rows = [], edits = {}, clips = {}, filterTag = '';
+const $ = id => document.getElementById(id);
+const esc = s => (s || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function parseCSV(t) {
+  const out = [], n = t.length; let row = [], f = '', q = false, i = 0;
+  while (i < n) { const c = t[i];
+    if (q) { if (c === '"') { if (t[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += c; }
+    else if (c === '"') q = true; else if (c === ',') { row.push(f); f = ''; }
+    else if (c === '\n' || c === '\r') { if (c === '\r' && t[i + 1] === '\n') i++; row.push(f); out.push(row); row = []; f = ''; }
+    else f += c; i++; }
+  if (f.length || row.length) { row.push(f); out.push(row); }
+  const h = out.shift(); return out.filter(r => r.length === h.length).map(r => Object.fromEntries(h.map((k, j) => [k, r[j]])));
+}
+const sec = h => { const p = h.split(':').map(Number); return p.length === 3 ? p[0] * 3600 + p[1] * 60 + p[2] : p.length === 2 ? p[0] * 60 + p[1] : p[0]; };
+const tagsOf = id => (edits[id] || {}).tags || [];
+function allTags() { const m = {}; for (const r of rows) for (const t of tagsOf(r.id)) m[t] = (m[t] || 0) + 1; return Object.entries(m).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])); }
+async function load() {
+  const [rv, ed, ix] = await Promise.all([
+    fetch('/work/segments_reviewed.csv', { cache: 'no-cache' }).then(r => r.text()),
+    fetch('/work/review.json', { cache: 'no-cache' }).then(r => r.json()),
+    fetch('/clips/index.csv', { cache: 'no-cache' }).then(r => r.ok ? r.text() : '').catch(() => '')]);
+  rows = parseCSV(rv); edits = ed;
+  for (const c of (ix ? parseCSV(ix) : [])) clips[c.id] = c.file;
+  render();
+}
+function srcOf(r) {
+  if (clips[r.id]) return '/clips/' + encodeURIComponent(clips[r.id]);
+  if ((edits[r.id] || {}).preview) return '/work/preview/' + r.id + '.mp4';
+  return '/video/' + r.episode + '#t=' + sec(r.start);
+}
+function render() {
+  const q = $('q').value.toLowerCase(), fs = $('fs').value, tags = allTags();
+  $('tagfilter').innerHTML = tags.map(([t, n]) => `<span class="tag ${filterTag === t ? 'on' : ''}" onclick="filterTag = filterTag === '${esc(t)}' ? '' : '${esc(t)}'; render()">${esc(t)} <span class=lab>${n}</span></span>`).join('');
+  const L = $('list'); L.innerHTML = ''; let k = 0;
+  for (const r of rows) {
+    const tg = tagsOf(r.id);
+    if (fs === 'untagged' && tg.length) continue;
+    if (fs === 'clip' && !clips[r.id]) continue;
+    if (filterTag && !tg.includes(filterTag)) continue;
+    if (q && !(r.id + ' ' + r.category + ' ' + (r.note || '') + ' ' + (r.anchor_text || '')).toLowerCase().includes(q)) continue;
+    k++;
+    const d = document.createElement('div'); d.className = 'c'; d.id = 'row-' + r.id;
+    d.innerHTML = `<div><video preload=none controls poster="/work/seg/${r.episode}/${r.id}_mid.jpg" src="${srcOf(r)}"></video>
+        <span class=lab>${clips[r.id] ? 'clip file' : (edits[r.id] || {}).preview ? 'work/preview render' : 'episode video from ' + r.start + ' (no clip yet)'}</span></div>
+      <div><b class=id>${r.id}</b> <span class=lab>${esc(r.category)} · ${r.start} → ${r.end} (${(sec(r.end) - sec(r.start)).toFixed(1)} s)</span>
+        ${r.note ? '<div class=note>' + esc(r.note) + '</div>' : ''}${(edits[r.id] || {}).vision ? '<div class=lab>👁 ' + esc(edits[r.id].vision) + '</div>' : ''}
+        <div class=lab style="margin-top:4px">${esc((r.anchor_text || '').slice(0, 200))}</div>
+        <div id="tags-${r.id}" style="margin-top:6px"></div></div>`;
+    L.appendChild(d); chips(r.id);
+  }
+  $('count').textContent = k + ' / ' + rows.length + ' rows';
+}
+function chips(id) {
+  const tg = tagsOf(id), all = allTags().map(x => x[0]);
+  for (const t of tg) if (!all.includes(t)) all.push(t);
+  $('tags-' + id).innerHTML = all.map(t => `<span class="tag ${tg.includes(t) ? 'on' : ''}" onclick="flip('${id}','${esc(t)}')">${esc(t)}</span>`).join('') +
+    `<input class=add placeholder="+ tag" onkeydown="if(event.key==='Enter'){flip('${id}',this.value);this.value=''}">`;
+}
+async function flip(id, t) {
+  t = t.trim().toLowerCase().replace(/\s+/g, '_'); if (!t) return;
+  const e = edits[id] = edits[id] || {}; const tg = new Set(e.tags || []);
+  tg.has(t) ? tg.delete(t) : tg.add(t); e.tags = [...tg].sort();
+  chips(id);
+  const r = await fetch('/tag', { method: 'POST', body: JSON.stringify({ id, tags: e.tags }) });
+  $('status').textContent = r.ok ? 'saved' : 'save failed';
+  // a brand-new tag appears on every other row too (greyed), and in the header
+  const nAll = allTags().length; if (nAll !== document.querySelectorAll('#tagfilter .tag').length) render();
+}
+$('q').oninput = render; $('fs').onchange = render;
+load();
+</script>

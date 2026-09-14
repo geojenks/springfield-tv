@@ -95,8 +95,32 @@ where the programme's audio runs under a reaction shot and cuts where it does no
 clip to `work/preview/<id>.mp4`; the review panel plays it, shows the shots as clickable buttons (green /
 amber = frozen / grey = cut) and has a "re-render" button for after you fix anything by hand.
 
+Three passes over the finished rows, all dry-run first:
+
+```
+python scripts/rogue_frames.py --source /path/to/episodes            # stray frames left by a hold/cut a frame off
+python scripts/music_scan.py                                         # ♪ runs in the subtitles -> music rows / tags
+python scripts/find_dups.py                                          # two rows over the same footage
+```
+
+`rogue_frames.py` decodes each edited clip, applies its holds and cuts virtually and reports every run of
+1–3 frames that flashes by next to a hold, a cut or the clip's ends; `--apply` covers each run with a tiny
+hold on the neighbouring frame (`--render` re-encodes the preview) and flags the row `auto_cue=rogue` for
+the "auto-cut, to check" filter. `music_scan.py` groups the sung (♪) lines of every episode into songs
+(the I&S theme excluded): songs inside an accepted row get the tag `music`, the rest become to-do rows of
+category `music` tagged `music` + `not_tv` (the review page's method filter has "music" / "all but music").
+`find_dups.py --apply` rejects the lesser of two overlapping rows as "dup of …" (different categories are
+only listed).
+
+http://localhost:8765/tags/ is a lighter pass over the accepted rows: each one plays (the cut clip if it
+exists, else the preview, else the episode at its start) under a row of chips, one per tag in use, click to
+toggle, `+ tag` to invent one. Tags go into review.json, the `tags` column of `segments_reviewed.csv` and
+`clips/index.csv`, and the player turns them into channels: `TAG_GROUPS` in `player/index.html` (MUSIC =
+`music` or `song`); a clip tagged `not_tv` is only ever on its tag channels, never on MAIN or the
+category channels.
+
 Then open http://localhost:8765/player/ : MAIN (everything shuffled, an episode's clips kept together) plus
-I&S · KRUSTY, CHANNEL 6 NEWS, TROY McCLURE and MISC, each running on
+I&S · KRUSTY, CHANNEL 6 NEWS, TROY McCLURE, MISC and MUSIC, each running on
 a wall clock so changing channel lands mid-programme; the FRAME button draws the in-show purple TV frame
 over clips that were shot full-screen.
 

@@ -3,7 +3,8 @@
 
   python scripts/review_server.py --source <episodes dir> [--work work] [--port 8765]
 
-then open http://localhost:8765/ (review) or http://localhost:8765/player/ (the channel-hopping
+then open http://localhost:8765/ (review), http://localhost:8765/tags/ (tag pass over the finished
+rows) or http://localhost:8765/player/ (the channel-hopping
 player, fed by clips/index.csv). The page (scripts/review.html) loads work/segments.csv,
 plays the episode file for each row (range requests, so seeking works), lets you step
 frames, set start/end, mark "holds" (a-b ranges where the picture freezes on the frame at b
@@ -49,7 +50,7 @@ def load_rows(work):
         if e.get("new"):
             r = {k: "" for k in fields}
             r.update(id=id, episode=e["episode"], category=e.get("category", ""), start=e["start"], end=e["end"],
-                     method="manual", confidence="", anchor_text=e.get("note", ""))
+                     method=e.get("method", "manual"), confidence="", anchor_text=e.get("lyrics") or e.get("note", ""))
             rows.append(r)
     rows.sort(key=lambda r: (r["episode"], _sec(r["start"])))
     return rows, edits
@@ -73,8 +74,9 @@ def write_reviewed(work):
         r["note"] = e.get("note", "")
         r["cuts"] = e.get("cuts", "")
         r["holds"] = e.get("holds") or (f"{r['start']}-{e['video_from']}" if e.get("video_from") else "")
+        r["tags"] = "+".join(e.get("tags") or [])
         out.append(r)
-    fields = list(rows[0].keys()) + ["cutaways", "note", "holds", "cuts"] if rows else ["id"]
+    fields = list(rows[0].keys()) + ["cutaways", "note", "holds", "cuts", "tags"] if rows else ["id"]
     with open(os.path.join(work, "segments_reviewed.csv"), "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=fields)
         w.writeheader()
@@ -103,6 +105,8 @@ class Handler(SimpleHTTPRequestHandler):
             return self.send_file(fp, self.guess_type(fp))
         if path in ("/player", "/player/"):
             return self.send_file(os.path.join(HERE, "..", "player", "index.html"), "text/html; charset=utf-8")
+        if path in ("/tags", "/tags/"):
+            return self.send_file(os.path.join(HERE, "tags.html"), "text/html; charset=utf-8")
         if path.startswith("/clips/"):
             fp = os.path.normpath(os.path.join(self.clips, path[7:].lstrip("/")))
             if not os.path.abspath(fp).startswith(os.path.abspath(self.clips)) or not os.path.isfile(fp):
@@ -118,6 +122,8 @@ class Handler(SimpleHTTPRequestHandler):
     def do_POST(self):
         if self.path == "/render":
             return self.render()
+        if self.path == "/tag":
+            return self.tag()
         if self.path != "/save":
             return self.send_error(404)
         n = int(self.headers.get("Content-Length", 0))
@@ -130,6 +136,27 @@ class Handler(SimpleHTTPRequestHandler):
                 json.dump(cur, f, indent=1)
         k = write_reviewed(self.work)
         self.reply({"ok": True, "accepted": k})
+
+    def tag(self):
+        """Body {id, tags: [...]}: replace that row's tag list only (the tags page never touches
+        the other fields, so it can stay open next to the review page)."""
+        n = int(self.headers.get("Content-Length", 0))
+        d = json.loads(self.rfile.read(n).decode("utf-8"))
+        rid = d.get("id", "")
+        tags = sorted({re.sub(r"[^\w-]", "_", t.strip().lower()) for t in d.get("tags", []) if t.strip()})
+        rp = os.path.join(self.work, "review.json")
+        with SAVE_LOCK:
+            cur = json.load(open(rp, encoding="utf-8")) if os.path.exists(rp) else {}
+            if rid not in cur:
+                return self.reply({"ok": False, "error": "unknown row " + rid}, 404)
+            if tags:
+                cur[rid]["tags"] = tags
+            else:
+                cur[rid].pop("tags", None)
+            with open(rp, "w", encoding="utf-8") as f:
+                json.dump(cur, f, indent=1)
+        write_reviewed(self.work)
+        self.reply({"ok": True, "tags": tags})
 
     def render(self):
         """Body {id, start, end, holds, cuts}: encode that row as it is now (the page sends the

@@ -182,7 +182,7 @@ def main():
         index.append(dict(file=name, id=r["id"], episode=f"S{season:02d}E{episode:02d}", category=label,
                           start=r["start"], end=r["end"], dur=f"{secs(r['end']) - secs(r['start']) - cut_len:.3f}",
                           method=r.get("method", ""), cutaways=r.get("cutaways", "0"), note=r.get("note", ""),
-                          holds=r.get("holds", ""), cuts=r.get("cuts", "")))
+                          holds=r.get("holds", ""), cuts=r.get("cuts", ""), tags=r.get("tags", "")))
         if os.path.exists(dst):
             continue
         cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
