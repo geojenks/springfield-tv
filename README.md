@@ -123,7 +123,7 @@ toggle, `+ tag` to invent one. Tags go into review.json, the `tags` column of `s
 tagged `not_tv` is only ever on the channels that claim it by tag, never on MAIN or MISC.
 
 Then open http://localhost:8765/player/ : MAIN (everything) then ITCHY & SCRATCHY, KRUSTY (which includes
-the I&S shorts), CHANNEL 6 NEWS, SPORTS, TROY McCLURE, McBAIN, MUSIC and MISC (whatever no channel claimed).
+the I&S shorts), CHANNEL 6 NEWS, SPORTS, TROY McCLURE, McBAIN, MTV (WIP) and MISC (whatever no channel claimed).
 On every channel an episode's clips run back to back in episode order and the episodes shuffle (per day;
 SHUFFLE deals again); the tag channels get an advert after every three episodes. Each channel runs on a wall
 clock so changing channel lands mid-programme; the FRAME button draws the in-show purple TV frame over

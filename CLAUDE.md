@@ -137,7 +137,7 @@ Bumblebee Man, adverts, "we now return to" bumpers), for a channel-hopping simul
 5. Player: http://localhost:8765/player/ (or `python -m http.server` at repo root → /player/). Channels come
    from the `tags` column of index.csv (`CHANNELS` in player/index.html): MAIN = everything, then ITCHY &
    SCRATCHY [itchy_scratchy], KRUSTY [krusty, itchy_scratchy], CHANNEL 6 NEWS [news, kent_brockman], SPORTS
-   [sports], TROY McCLURE [troy_mcclure], McBAIN [mcbain, mendoza], MUSIC [music, song, musical], then MISC =
+   [sports], TROY McCLURE [troy_mcclure], McBAIN [mcbain, mendoza], MTV (WIP) [music, song, musical], then MISC =
    clips no channel claimed (adverts, bumpers, `screen`). A clip is on every channel whose tag list it hits.
    Within every channel an episode's clips run back to back in episode order and the episodes shuffle (seed =
    the day, or a fresh one per SHUFFLE press); the tag channels get an advert (tag `advert`, one the channel
