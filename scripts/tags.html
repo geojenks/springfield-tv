@@ -41,14 +41,17 @@ function parseCSV(t) {
   const h = out.shift(); return out.filter(r => r.length === h.length).map(r => Object.fromEntries(h.map((k, j) => [k, r[j]])));
 }
 const sec = h => { const p = h.split(':').map(Number); return p.length === 3 ? p[0] * 3600 + p[1] * 60 + p[2] : p.length === 2 ? p[0] * 60 + p[1] : p[0]; };
-const tagsOf = id => (edits[id] || {}).tags || [];
+// a row with no tag list yet starts with its category tokens: the server puts that default in the
+// csv's tags column, so the csv is the fallback
+let byId = {};
+const tagsOf = id => { const e = edits[id] || {}; return 'tags' in e ? e.tags : ((byId[id] || {}).tags || '').split('+').filter(Boolean); };
 function allTags() { const m = {}; for (const r of rows) for (const t of tagsOf(r.id)) m[t] = (m[t] || 0) + 1; return Object.entries(m).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])); }
 async function load() {
   const [rv, ed, ix] = await Promise.all([
     fetch('/work/segments_reviewed.csv', { cache: 'no-cache' }).then(r => r.text()),
     fetch('/work/review.json', { cache: 'no-cache' }).then(r => r.json()),
     fetch('/clips/index.csv', { cache: 'no-cache' }).then(r => r.ok ? r.text() : '').catch(() => '')]);
-  rows = parseCSV(rv); edits = ed;
+  rows = parseCSV(rv); edits = ed; byId = Object.fromEntries(rows.map(r => [r.id, r]));
   for (const c of (ix ? parseCSV(ix) : [])) clips[c.id] = c.file;
   render();
 }
@@ -87,7 +90,7 @@ function chips(id) {
 }
 async function flip(id, t) {
   t = t.trim().toLowerCase().replace(/\s+/g, '_'); if (!t) return;
-  const e = edits[id] = edits[id] || {}; const tg = new Set(e.tags || []);
+  const e = edits[id] = edits[id] || {}; const tg = new Set(tagsOf(id));
   tg.has(t) ? tg.delete(t) : tg.add(t); e.tags = [...tg].sort();
   chips(id);
   const r = await fetch('/tag', { method: 'POST', body: JSON.stringify({ id, tags: e.tags }) });

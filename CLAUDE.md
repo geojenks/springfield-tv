@@ -122,7 +122,8 @@ Bumblebee Man, adverts, "we now return to" bumpers), for a channel-hopping simul
    "dup of <id>"; different first category tokens are listed only (the user's `music` excerpts inside adverts).
    **Tags**: http://localhost:8765/tags/ (scripts/tags.html) lists every accepted row with its video (clips/
    file if extracted, else work/preview, else the episode at #t=start) and a chip per tag in use (grey / green
-   = on, `+ tag` input; names are lowercased, spaces → `_`); POST `/tag {id, tags}` writes `tags` into
+   = on, `+ tag` input; names are lowercased, spaces → `_`). A row with no tag list starts with its category
+   tokens (`krusty+advert` → both; `default_tags`); POST `/tag {id, tags}` writes `tags` (an empty list is real) into
    review.json and regenerates segments_reviewed.csv (`tags` column, '+'-joined). Tags decide channels, see 5.
 4. `python scripts/extract_clips.py --source <eps> --catalog work/segments_reviewed.csv --precise`
    → `clips/S05E07_<id>_<category>.mp4` + `clips/index.csv` (carries dur, method, cutaways, note, holds, cuts, tags).

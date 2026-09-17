@@ -56,6 +56,11 @@ def load_rows(work):
     return rows, edits
 
 
+def default_tags(category):
+    """a row with no tag list yet is tagged with its category tokens (`krusty+advert` -> both)"""
+    return sorted({t for t in re.split(r"[+&]", category or "") if t})
+
+
 def write_reviewed(work):
     """Merge work/review.json into work/segments.csv (+ hand-added rows) -> work/segments_reviewed.csv."""
     rows, edits = load_rows(work)
@@ -74,7 +79,7 @@ def write_reviewed(work):
         r["note"] = e.get("note", "")
         r["cuts"] = e.get("cuts", "")
         r["holds"] = e.get("holds") or (f"{r['start']}-{e['video_from']}" if e.get("video_from") else "")
-        r["tags"] = "+".join(e.get("tags") or [])
+        r["tags"] = "+".join(e["tags"] if "tags" in e else default_tags(r["category"]))
         out.append(r)
     fields = list(rows[0].keys()) + ["cutaways", "note", "holds", "cuts", "tags"] if rows else ["id"]
     with open(os.path.join(work, "segments_reviewed.csv"), "w", newline="", encoding="utf-8") as f:
@@ -149,10 +154,7 @@ class Handler(SimpleHTTPRequestHandler):
             cur = json.load(open(rp, encoding="utf-8")) if os.path.exists(rp) else {}
             if rid not in cur:
                 return self.reply({"ok": False, "error": "unknown row " + rid}, 404)
-            if tags:
-                cur[rid]["tags"] = tags
-            else:
-                cur[rid].pop("tags", None)
+            cur[rid]["tags"] = tags                       # [] is real: every category tag switched off
             with open(rp, "w", encoding="utf-8") as f:
                 json.dump(cur, f, indent=1)
         write_reviewed(self.work)
