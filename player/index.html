@@ -155,14 +155,21 @@ const video = $('video'), noise = $('noise'), osd = $('osd'), osdCh = $('osdCh')
       empty = $('empty'), picker = $('picker'), dial = $('dial'), chKnob = $('chKnob'), vol = $('vol'), volKnob = $('volKnob'), volLabel = $('volLabel'), shuffleBtn = $('shuffle'),
       frameBtn = $('frameBtn'), frame = $('frame'), screen = $('screen'), chLabel = $('chLabel');
 
-// channel line-up: MAIN (everything, one big shuffle) then four groups. A clip's category picks its
-// group by its first token (troy_mcclure&musical -> troy); anything unlisted lands in MISC.
+// channel line-up: MAIN (everything, one big shuffle) then the category groups, then tag channels.
+// A clip's category picks its group by its first token (troy_mcclure&musical -> troy); anything
+// unlisted lands in MISC. Tag channels (index.csv `tags`, '+'-joined, set on the /tags/ page) take
+// every clip carrying one of their tags; a clip tagged not_tv (music that isn't on a TV screen) is
+// left out of MAIN and the category groups and only plays on the tag channels that claim it.
 const GROUPS = [
   { name: 'I&S · KRUSTY', cats: ['itchy_scratchy', 'krusty'] },
   { name: 'CHANNEL 6 NEWS', cats: ['kent_brockman', 'news'] },
   { name: 'TROY McCLURE', cats: ['troy_mcclure'] },
   { name: 'MISC', cats: [] },                 // adverts, bumpers, McBain, unnamed shows
 ];
+const TAG_GROUPS = [
+  { name: 'MUSIC', tags: ['music', 'song'] },
+];
+const tagsOf = c => (c.tags || '').split('+').filter(Boolean);
 const groupOf = c => GROUPS.find(g => g.cats.includes((c.category || '').split(/[&+]/)[0])) || GROUPS[GROUPS.length - 1];
 const EPOCH = Date.UTC(2026, 0, 1) / 1000;      // wall-clock origin shared by every viewer
 let channels = [], ch = -1, cur = null, frameMode = 'auto', dialAngle = 0, osdTimer = null, shuffle = false;
@@ -186,8 +193,10 @@ function seeded(seed) { let s = seed >>> 0 || 1; return () => (s = (s * 1664525 
 function shuffled(a, seed) { const r = seeded(seed), b = a.slice(); for (let i = b.length - 1; i > 0; i--) { const j = r() * (i + 1) | 0; [b[i], b[j]] = [b[j], b[i]]; } return b; }
 
 function buildChannels(clips) {
-  channels = [{ name: 'MAIN', clips, mix: true }];
-  for (const g of GROUPS) { const cl = clips.filter(c => groupOf(c) === g); if (cl.length) channels.push({ name: g.name, clips: cl }); }
+  const tv = clips.filter(c => !tagsOf(c).includes('not_tv'));
+  channels = [{ name: 'MAIN', clips: tv, mix: true }];
+  for (const g of GROUPS) { const cl = tv.filter(c => groupOf(c) === g); if (cl.length) channels.push({ name: g.name, clips: cl }); }
+  for (const g of TAG_GROUPS) { const cl = clips.filter(c => tagsOf(c).some(t => g.tags.includes(t))); if (cl.length) channels.push({ name: g.name, clips: cl }); }
   const day = Math.floor(Date.now() / 864e5);
   channels.forEach((c, i) => {                                   // fixed running order per channel per day
     // clips from one episode always run back to back, in episode order; the episodes themselves shuffle
