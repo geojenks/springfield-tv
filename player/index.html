@@ -155,24 +155,27 @@ const video = $('video'), noise = $('noise'), osd = $('osd'), osdCh = $('osdCh')
       empty = $('empty'), picker = $('picker'), dial = $('dial'), chKnob = $('chKnob'), vol = $('vol'), volKnob = $('volKnob'), volLabel = $('volLabel'), shuffleBtn = $('shuffle'),
       frameBtn = $('frameBtn'), frame = $('frame'), screen = $('screen'), chLabel = $('chLabel');
 
-// channel line-up: MAIN (everything, one big shuffle) then the category groups, then tag channels.
-// A clip's category picks its group by its first token (troy_mcclure&musical -> troy); anything
-// unlisted lands in MISC. Tag channels (index.csv `tags`, '+'-joined, set on the /tags/ page) take
-// every clip carrying one of their tags; a clip tagged not_tv (music that isn't on a TV screen) is
-// left out of MAIN and the category groups and only plays on the tag channels that claim it.
-const GROUPS = [
-  { name: 'I&S · KRUSTY', cats: ['itchy_scratchy', 'krusty'] },
-  { name: 'CHANNEL 6 NEWS', cats: ['kent_brockman', 'news'] },
-  { name: 'TROY McCLURE', cats: ['troy_mcclure'] },
-  { name: 'MISC', cats: [] },                 // adverts, bumpers, McBain, unnamed shows
+// channel line-up, all from the tags in index.csv (set on the /tags/ page; a row starts with its
+// category tokens): MAIN is everything, then one channel per entry below taking every clip that
+// carries one of its tags, then MISC for whatever no channel claimed (unnamed shows, bumpers...).
+// A clip tagged not_tv (a song sung in the room, not on a screen) is left out of MAIN and MISC and
+// only plays on the channels that claim it by tag. Within every channel an episode's clips run back
+// to back in episode order and the episodes shuffle (per day, or per press of SHUFFLE); on the tag
+// channels an advert (tag `advert`, one the channel doesn't already carry) plays after every
+// AD_EVERY episodes.
+const CHANNELS = [
+  { name: 'ITCHY & SCRATCHY', tags: ['itchy_scratchy'] },
+  { name: 'KRUSTY', tags: ['krusty', 'itchy_scratchy'] },
+  { name: 'CHANNEL 6 NEWS', tags: ['news', 'kent_brockman'] },
+  { name: 'SPORTS', tags: ['sports'] },
+  { name: 'TROY McCLURE', tags: ['troy_mcclure'] },
+  { name: 'McBAIN', tags: ['mcbain', 'mendoza'] },
+  { name: 'MUSIC', tags: ['music', 'song', 'musical'] },
 ];
-const TAG_GROUPS = [
-  { name: 'MUSIC', tags: ['music', 'song'] },
-];
+const AD_EVERY = 3;
 const tagsOf = c => (c.tags || '').split('+').filter(Boolean);
-const groupOf = c => GROUPS.find(g => g.cats.includes((c.category || '').split(/[&+]/)[0])) || GROUPS[GROUPS.length - 1];
 const EPOCH = Date.UTC(2026, 0, 1) / 1000;      // wall-clock origin shared by every viewer
-let channels = [], ch = -1, cur = null, frameMode = 'auto', dialAngle = 0, osdTimer = null, shuffle = false;
+let channels = [], ch = -1, cur = null, frameMode = 'auto', dialAngle = 0, osdTimer = null, shuffle = false, shuffleSeed = 0, allClips = [];
 
 function parseCSV(t) {
   const out = [], n = t.length; let row = [], f = '', q = false, i = 0;
@@ -193,16 +196,28 @@ function seeded(seed) { let s = seed >>> 0 || 1; return () => (s = (s * 1664525 
 function shuffled(a, seed) { const r = seeded(seed), b = a.slice(); for (let i = b.length - 1; i > 0; i--) { const j = r() * (i + 1) | 0; [b[i], b[j]] = [b[j], b[i]]; } return b; }
 
 function buildChannels(clips) {
+  allClips = clips;
   const tv = clips.filter(c => !tagsOf(c).includes('not_tv'));
-  channels = [{ name: 'MAIN', clips: tv, mix: true }];
-  for (const g of GROUPS) { const cl = tv.filter(c => groupOf(c) === g); if (cl.length) channels.push({ name: g.name, clips: cl }); }
-  for (const g of TAG_GROUPS) { const cl = clips.filter(c => tagsOf(c).some(t => g.tags.includes(t))); if (cl.length) channels.push({ name: g.name, clips: cl }); }
-  const day = Math.floor(Date.now() / 864e5);
-  channels.forEach((c, i) => {                                   // fixed running order per channel per day
+  const claimed = new Set();
+  channels = [{ name: 'MAIN', clips: tv }];
+  for (const g of CHANNELS) {
+    const cl = clips.filter(c => tagsOf(c).some(t => g.tags.includes(t)));
+    cl.forEach(c => claimed.add(c));
+    if (cl.length) channels.push({ name: g.name, clips: cl, ads: true });
+  }
+  const rest = tv.filter(c => !claimed.has(c));
+  if (rest.length) channels.push({ name: 'MISC', clips: rest });
+  const ads = tv.filter(c => tagsOf(c).includes('advert'));
+  const seed = shuffle ? shuffleSeed : Math.floor(Date.now() / 864e5) * 31;
+  channels.forEach((c, i) => {                                   // fixed running order per channel (per day)
     // clips from one episode always run back to back, in episode order; the episodes themselves shuffle
     const eps = {}; for (const x of c.clips) (eps[x.episode || x.name] = eps[x.episode || x.name] || []).push(x);
-    const groups = Object.values(eps).map(g => g.sort((p, q) => (p.start || '').localeCompare(q.start || '')));
-    c.order = (c.mix || shuffle ? shuffled(groups, day * 31 + i) : groups).flat();
+    const groups = shuffled(Object.values(eps).map(g => g.sort((p, q) => (p.start || '').localeCompare(q.start || ''))), seed + i);
+    if (c.ads) {                                                 // an ad break after every AD_EVERY episodes
+      const pool = shuffled(ads.filter(x => !c.clips.includes(x)), seed + 1000 + i); let k = 0;
+      if (pool.length) for (let j = AD_EVERY; j <= groups.length; j += AD_EVERY + 1) groups.splice(j, 0, [pool[k++ % pool.length]]);
+    }
+    c.order = groups.flat();
     c.total = c.order.reduce((s, x) => s + (x.dur || 30), 0);
   });
 }
@@ -303,7 +318,7 @@ vol.addEventListener('pointermove', e => { if (volY === null) return; const d = 
 vol.addEventListener('pointerup', () => volY = null);
 setVolume(volume, false);
 dial.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tune(1); } };
-shuffleBtn.onclick = () => { shuffle = !shuffle; shuffleBtn.classList.toggle('on', shuffle); if (channels.length) { const c = channels[ch].clips; buildChannels(channels.find(x => x.mix).clips); tune(0); } };
+shuffleBtn.onclick = () => { shuffle = true; shuffleSeed = Math.random() * 1e9 | 0; shuffleBtn.classList.add('on'); if (channels.length) { buildChannels(allClips); tune(0); } };
 // FULL: the page becomes the set (CSS), and on phones we also ask for real fullscreen + landscape; Esc / back exits both
 let full = false; const fullBtn = $('fullBtn');
 function setFull(on) {

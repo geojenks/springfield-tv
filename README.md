@@ -101,6 +101,7 @@ Three passes over the finished rows, all dry-run first:
 python scripts/rogue_frames.py --source /path/to/episodes            # stray frames left by a hold/cut a frame off
 python scripts/music_scan.py                                         # ♪ runs in the subtitles -> music rows / tags
 python scripts/find_dups.py                                          # two rows over the same footage
+python scripts/auto_tags.py                                          # tag suggestions from the dialogue (sports, news...)
 ```
 
 `rogue_frames.py` decodes each edited clip, applies its holds and cuts virtually and reports every run of
@@ -108,21 +109,25 @@ python scripts/find_dups.py                                          # two rows 
 hold on the neighbouring frame (`--render` re-encodes the preview) and flags the row `auto_cue=rogue` for
 the "auto-cut, to check" filter. `music_scan.py` groups the sung (♪) lines of every episode into songs
 (the I&S theme excluded): songs inside an accepted row get the tag `music`, the rest become to-do rows of
-category `music` tagged `music` + `not_tv` (the review page's method filter has "music" / "all but music").
-`find_dups.py --apply` rejects the lesser of two overlapping rows as "dup of …" (different categories are
-only listed).
+category `music` tagged `music` + `not_tv`, timed exactly to the sung lines (the review page's method filter
+has "music" / "all but music"; a re-run retimes the rows still to do). `find_dups.py --apply` rejects the
+lesser of two overlapping rows as "dup of …" (different categories are only listed). `auto_tags.py` reads
+the subtitle lines heard inside each accepted row against one regex per tag (sports, news, mcbain,
+troy_mcclure, krusty, itchy_scratchy, advert, bumblebee) and lists the tags it would add with the hit count
+and a sample line; `--apply` adds them.
 
 http://localhost:8765/tags/ is a lighter pass over the accepted rows: each one plays (the cut clip if it
 exists, else the preview, else the episode at its start) under a row of chips, one per tag in use, click to
 toggle, `+ tag` to invent one. Tags go into review.json, the `tags` column of `segments_reviewed.csv` and
-`clips/index.csv`, and the player turns them into channels: `TAG_GROUPS` in `player/index.html` (MUSIC =
-`music` or `song`); a clip tagged `not_tv` is only ever on its tag channels, never on MAIN or the
-category channels.
+`clips/index.csv`, and the player turns them into channels (`CHANNELS` in `player/index.html`); a clip
+tagged `not_tv` is only ever on the channels that claim it by tag, never on MAIN or MISC.
 
-Then open http://localhost:8765/player/ : MAIN (everything shuffled, an episode's clips kept together) plus
-I&S · KRUSTY, CHANNEL 6 NEWS, TROY McCLURE, MISC and MUSIC, each running on
-a wall clock so changing channel lands mid-programme; the FRAME button draws the in-show purple TV frame
-over clips that were shot full-screen.
+Then open http://localhost:8765/player/ : MAIN (everything) then ITCHY & SCRATCHY, KRUSTY (which includes
+the I&S shorts), CHANNEL 6 NEWS, SPORTS, TROY McCLURE, McBAIN, MUSIC and MISC (whatever no channel claimed).
+On every channel an episode's clips run back to back in episode order and the episodes shuffle (per day;
+SHUFFLE deals again); the tag channels get an advert after every three episodes. Each channel runs on a wall
+clock so changing channel lands mid-programme; the FRAME button draws the in-show purple TV frame over
+clips that were shot full-screen.
 
 To put the same thing on GitHub Pages, `python scripts/deploy_pages.py` builds a `gh-pages` branch holding
 `player/`, `clips/` and a redirecting `index.html`, and force-pushes it (the clips go public; the code branch

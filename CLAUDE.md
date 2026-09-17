@@ -20,9 +20,10 @@ scripts/tags.html                 /tags/ on the review server: accepted rows as 
 scripts/rogue_frames.py           finds 1-3 stray frames next to a hold/cut/clip end; --apply covers them with a tiny hold
 scripts/music_scan.py             ♪ subtitle runs -> `music` tag on accepted rows, new `music` rows tagged music+not_tv
 scripts/find_dups.py              overlapping rows of one episode; --apply rejects the lesser as "dup of <id>"
+scripts/auto_tags.py              tag suggestions per accepted row from its subtitle lines (regex per tag); --apply
 scripts/deploy_pages.py           builds the gh-pages branch (player/ + clips/ + redirect) and force-pushes it
-player/index.html                 channel-hopper fed by clips/index.csv (channels per category + MIX + OUTLIERS,
-                                  wall-clock schedule, optional purple TV frame overlay); drop files still works
+player/index.html                 channel-hopper fed by clips/index.csv (MAIN + one channel per tag group + MISC,
+                                  ad breaks, wall-clock schedule, purple TV frame overlay); drop files still works
 refs/                             reference PNGs for hash matching (filename = label); empty so far
 ```
 No video in git. `clips/` and video extensions are gitignored.
@@ -116,7 +117,13 @@ Bumblebee Man, adverts, "we now return to" bumpers), for a channel-hopping simul
    `python scripts/music_scan.py [--seasons 1-9] [--apply]` groups ♪ lines (gap ≤ 6 s, ≥ 3 lines, ≥ 8 s,
    I&S theme / "they fight and fight" / Simpsons title skipped): a song overlapping an accepted row adds the
    tag `music` to it; the rest become `SxxEyy-music-NN` rows (new=true, method `music`, status todo, tags
-   music+not_tv, `lyrics`). ~300 of them on S1–9, so the review page method filter has `music` / `all but music`.
+   music+not_tv, `lyrics`) timed exactly to the sung lines (`--pad`, default 0). ~300 of them on S1–9, so the
+   review page method filter has `music` / `all but music`. A re-run retimes the music rows still to do
+   (accepted/rejected ones are left alone).
+   `python scripts/auto_tags.py [--min 2] [--tags sports,news] [--ids ...] [--apply]`: the subtitle lines
+   inside each accepted row against one regex per tag in `RULES` (sports, news, mcbain, troy_mcclure, krusty,
+   itchy_scratchy, advert, bumblebee; `music` is music_scan's job); rows with ≥ --min hits are listed with a
+   sample line, `--apply` adds the tags (existing ones kept). Then re-run extract_clips to refresh index.csv.
    `python scripts/find_dups.py [--overlap 0.5] [--apply]`: accepted/todo rows of one episode whose shorter
    span is > 50% inside the other; loser (todo, then less edit work, shorter, later id) is rejected with note
    "dup of <id>"; different first category tokens are listed only (the user's `music` excerpts inside adverts).
@@ -127,17 +134,18 @@ Bumblebee Man, adverts, "we now return to" bumpers), for a channel-hopping simul
    review.json and regenerates segments_reviewed.csv (`tags` column, '+'-joined). Tags decide channels, see 5.
 4. `python scripts/extract_clips.py --source <eps> --catalog work/segments_reviewed.csv --precise`
    → `clips/S05E07_<id>_<category>.mp4` + `clips/index.csv` (carries dur, method, cutaways, note, holds, cuts, tags).
-5. Player: http://localhost:8765/player/ (or `python -m http.server` at repo root → /player/). Channels
-   (`GROUPS` in player/index.html): MAIN = everything in one big shuffle, then I&S · KRUSTY
-   (itchy_scratchy, krusty), CHANNEL 6 NEWS (kent_brockman, news), TROY McCLURE, MISC (advert, bumper,
-   mcbain, screen, anything else). A category's first token (before `&`/`+`) picks the group. Within every
-   channel an episode's clips run back to back in episode order; the episodes shuffle per day. Dial / ↑↓ =
-   channel, ◀▶ / ←→ = clip, each channel runs on a shared wall clock (EPOCH 2026-01-01) so a switch lands
-   mid-programme. Categories in use: itchy_scratchy, krusty, kent_brockman, news, troy_mcclure, mcbain,
-   advert, bumper, screen (unnamed show; relabel on the review page when the dialogue makes it clear).
-   Tag channels: `TAG_GROUPS` (MUSIC = tags `music`/`song`) come after the category channels; a clip tagged
-   `not_tv` (a song sung in the room, not on a screen) is left out of MAIN and the category channels and only
-   plays on its tag channels.
+5. Player: http://localhost:8765/player/ (or `python -m http.server` at repo root → /player/). Channels come
+   from the `tags` column of index.csv (`CHANNELS` in player/index.html): MAIN = everything, then ITCHY &
+   SCRATCHY [itchy_scratchy], KRUSTY [krusty, itchy_scratchy], CHANNEL 6 NEWS [news, kent_brockman], SPORTS
+   [sports], TROY McCLURE [troy_mcclure], McBAIN [mcbain, mendoza], MUSIC [music, song, musical], then MISC =
+   clips no channel claimed (adverts, bumpers, `screen`). A clip is on every channel whose tag list it hits.
+   Within every channel an episode's clips run back to back in episode order and the episodes shuffle (seed =
+   the day, or a fresh one per SHUFFLE press); the tag channels get an advert (tag `advert`, one the channel
+   doesn't already carry, seeded pick) after every `AD_EVERY` (3) episodes. Dial / ↑↓ = channel, ◀▶ / ←→ =
+   clip, each channel runs on a shared wall clock (EPOCH 2026-01-01) so a switch lands mid-programme. A clip
+   tagged `not_tv` (a song sung in the room, not on a screen) is left out of MAIN and MISC and only plays on
+   the channels that claim it by tag. Categories still exist on the review page (itchy_scratchy, krusty,
+   kent_brockman, news, troy_mcclure, mcbain, advert, bumper, screen = unnamed show) and seed a row's tags.
    FRAME button (`f`): auto draws the purple in-show TV frame over clips whose method isn't `bezel`.
    Public copy: https://geojenks.github.io/springfield-tv/ (redirects to player/). `python scripts/deploy_pages.py`
    rebuilds the `gh-pages` branch with the same layout (player/index.html, clips/*.mp4 + index.csv, .nojekyll)

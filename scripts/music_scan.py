@@ -10,17 +10,21 @@ Then each run is matched against the review rows (work/segments.csv + hand-added
   overlaps an accepted row   -> that row gets the `music` tag (it is on a TV, so it also stays on
                                 the normal channels); rows that were rejected/unreviewed are left alone
   overlaps nothing accepted  -> a new review.json row  SxxEyy-music-NN  (new=true, method music,
-                                category music, status todo, tags [music, not_tv]) covering the run
-                                with --pad either side; trim it on the review page and accept it.
-                                not_tv keeps it off MAIN and the category channels in the player;
-                                drop the tag on the /tags/ page if the song turns out to be on a screen.
+                                category music, status todo, tags [music, not_tv]) covering exactly
+                                the sung lines (--pad adds seconds either side, default 0); trim it on
+                                the review page and accept it. not_tv keeps it off MAIN and the
+                                category channels in the player; drop the tag on the /tags/ page if
+                                the song turns out to be on a screen.
+  already a music row          -> still to do: its start/end/lyrics are rewritten from the current
+                                settings (so a re-run with a new --pad retimes them); accepted or
+                                rejected rows are left alone.
 
 Without --apply nothing is written. Reload the review / tags page after running it.
 """
 import argparse, csv, json, os, re, sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from review_server import load_rows, write_reviewed, _sec  # noqa: E402
+from review_server import load_rows, write_reviewed, _sec, default_tags  # noqa: E402
 
 SKIP = re.compile(r"itchy|scratchy|they fight and fight|^♪ the simpsons ♪$", re.I)
 
@@ -52,7 +56,7 @@ def main():
     ap.add_argument("--gap", type=float, default=6.0, help="max silence between ♪ lines inside one run")
     ap.add_argument("--min-lines", type=int, default=3)
     ap.add_argument("--min-span", type=float, default=8.0, help="seconds")
-    ap.add_argument("--pad", type=float, default=1.5, help="seconds added either side of a new row")
+    ap.add_argument("--pad", type=float, default=0.0, help="seconds added either side of a new row")
     ap.add_argument("--apply", action="store_true")
     a = ap.parse_args()
 
@@ -69,7 +73,7 @@ def main():
         by_ep.setdefault(r["episode"], []).append(r)
     rp = os.path.join(a.work, "review.json")
 
-    tagged, new, kept, changes = [], [], 0, {}
+    tagged, new, retimed, kept, changes = [], [], [], 0, {}
     for fn in sorted(os.listdir(os.path.join(a.work, "subs"))):
         m = re.match(r"(S(\d\d)E\d\d)\.json$", fn)
         if not m or (seasons and int(m.group(2)) not in seasons):
@@ -92,7 +96,8 @@ def main():
                     hit = r; break
             first = re.sub(r"^[-♪ ]+|[ ♪]+$", "", body[0])
             if hit:
-                tg = set(edits.get(hit["id"], {}).get("tags") or [])
+                he = edits.get(hit["id"], {})
+                tg = set(he["tags"] if "tags" in he else default_tags(he.get("category") or hit["category"]))
                 if "music" not in tg:
                     tagged.append((hit["id"], hms(t0), hms(t1), first))
                     changes[hit["id"]] = {"tags": sorted(tg | {"music"})}
@@ -101,14 +106,19 @@ def main():
             while f"{ep}-music-{n_ep:02d}" in existing:
                 n_ep += 1
             rid = f"{ep}-music-{n_ep:02d}"; n_ep += 1
-            # the same run may already be a row from an earlier run of this script
-            dup = next((k for k in existing if abs(_sec(edits[k]["start"]) - (t0 - a.pad)) < 3), None)
+            lyrics = " / ".join(re.sub(r"[♪ ]+$|^[-♪ ]+", "", l) for l in body)
+            # the same run may already be a row from an earlier run of this script (with another --pad)
+            dup = next((k for k in existing if abs(_sec(edits[k]["start"]) - t0) < 5), None)
             if dup:
+                if edits[dup].get("status", "todo") == "todo" and \
+                        (edits[dup].get("start"), edits[dup].get("end")) != (hms(t0 - a.pad), hms(t1 + a.pad)):
+                    retimed.append((dup, hms(t0 - a.pad), hms(t1 + a.pad), first))
+                    changes[dup] = dict(start=hms(t0 - a.pad), end=hms(t1 + a.pad), note=first, lyrics=lyrics)
                 continue
             new.append((rid, hms(t0 - a.pad), hms(t1 + a.pad), first))
             changes[rid] = dict(new=True, episode=ep, category="music", method="music", status="todo",
                                   start=hms(t0 - a.pad), end=hms(t1 + a.pad), tags=["music", "not_tv"],
-                                  note=first, lyrics=" / ".join(re.sub(r"[♪ ]+$|^[-♪ ]+", "", l) for l in body))
+                                  note=first, lyrics=lyrics)
 
     print(f"{kept} song runs")
     print(f"\n{len(tagged)} inside accepted rows -> tag music:")
@@ -116,6 +126,9 @@ def main():
         print("  %-28s %s-%s  %s" % x)
     print(f"\n{len(new)} new rows (music + not_tv, status todo):")
     for x in new:
+        print("  %-22s %s-%s  %s" % x)
+    print(f"\n{len(retimed)} existing to-do music rows retimed:")
+    for x in retimed:
         print("  %-22s %s-%s  %s" % x)
     if a.apply:                                     # re-read and merge per row: the review server may be writing too
         cur = json.load(open(rp, encoding="utf-8")) if os.path.exists(rp) else {}
