@@ -151,7 +151,7 @@ Bumblebee Man, adverts, "we now return to" bumpers), for a channel-hopping simul
    rebuilds the `gh-pages` branch with the same layout (player/index.html, clips/*.mp4 + index.csv, .nojekyll)
    and force-pushes it; run it after extract_clips. Phones: the set also fits the viewport height (landscape),
    aerial/feet hidden under 520 px tall, and a "tap to switch on" overlay appears when autoplay with sound is refused.
-   FULL button (`z`): the page becomes the set: screen fills the viewport height (4:3, centred, purple either
+   Full-screen button (corner-arrows icon, `z`): the page becomes the set: screen fills the viewport height (4:3, centred, purple either
    side), knobs scaled to the height in a column on the right; portrait stacks the knobs under the screen. Also
    requests real fullscreen + landscape lock where allowed; remembered in localStorage (stv-full).
    Rows with holds/cuts are re-encoded (`edit_filter`: trim pieces + tpad clone + concat) even

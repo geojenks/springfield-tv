@@ -76,6 +76,8 @@
   .btn.wide{width:66%;aspect-ratio:auto;border-radius:12px;padding:6px 4px}
   .btn:active{transform:translateY(3px);box-shadow:0 1px 0 var(--ink)}
   .btn.on{background:var(--mustard)}
+  .fs{width:1.8em;height:1.8em;fill:none;stroke:var(--ink);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+  .fs .exit,body.full .fs .enter{display:none} body.full .fs .exit{display:block}   /* corners point in once full */
   .btn:focus-visible,.dial:focus-visible{outline:3px solid #7cff6b;outline-offset:3px}
   .speaker{width:86%;height:11%;background:repeating-linear-gradient(0deg,var(--ink) 0 3px,#0000 3px 9px);
     border-radius:4px;opacity:.75}
@@ -138,7 +140,11 @@
     </div>
     <div class="row"><button class="btn wide" id="shuffle">SHUFFLE</button></div>
     <div class="row"><button class="btn wide" id="frameBtn" title="purple TV frame: auto / on / off">FRAME: AUTO</button></div>
-    <div class="row"><button class="btn wide" id="fullBtn" title="fill the window: screen full height, knobs on the right (key z)">FULL</button></div>
+    <div class="row"><button class="btn wide" id="fullBtn" aria-label="Full screen" title="full screen (key z)">
+      <svg class="fs" viewBox="0 0 24 24" aria-hidden="true">
+        <path class="enter" d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/>
+        <path class="exit" d="M9 4v5H4M20 9h-5V4M15 20v-5h5M4 15h5v5"/>
+      </svg></button></div>
     <div class="speaker"></div>
   </div>
   <div class="foot l"></div><div class="foot r"></div>
@@ -322,7 +328,7 @@ shuffleBtn.onclick = () => { shuffle = true; shuffleSeed = Math.random() * 1e9 |
 // FULL: the page becomes the set (CSS), and on phones we also ask for real fullscreen + landscape; Esc / back exits both
 let full = false; const fullBtn = $('fullBtn');
 function setFull(on) {
-  full = on; document.body.classList.toggle('full', on); fullBtn.textContent = on ? 'EXIT FULL' : 'FULL';
+  full = on; document.body.classList.toggle('full', on); fullBtn.title = (on ? 'exit full screen' : 'full screen') + ' (key z)';
   if (on) { document.documentElement.requestFullscreen?.().catch(() => {}); window.screen.orientation?.lock?.('landscape').catch(() => {}); }
   else if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
   try { localStorage.setItem('stv-full', on ? '1' : '0'); } catch (e) {}
