@@ -162,9 +162,15 @@ def main():
     ap.add_argument("--out", default="clips")
     ap.add_argument("--precise", action="store_true", help="re-encode for frame-accurate cuts")
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--prune", action="store_true", help="delete clips in --out that no catalog row produces any more")
     a = ap.parse_args()
 
     os.makedirs(a.out, exist_ok=True)
+    # what each existing clip was cut from, so an edited row (new start/end/holds/cuts) is re-cut
+    old = {}
+    if os.path.exists(os.path.join(a.out, "index.csv")):
+        for o in csv.DictReader(open(os.path.join(a.out, "index.csv"), newline="", encoding="utf-8")):
+            old[o["file"]] = tuple(o.get(k, "") for k in ("start", "end", "holds", "cuts"))
     rows = csv.DictReader(open(a.catalog, newline="", encoding="utf-8"))
     done = skipped = 0
     index, fps_cache = [], {}
@@ -184,7 +190,9 @@ def main():
                           method=r.get("method", ""), cutaways=r.get("cutaways", "0"), note=r.get("note", ""),
                           holds=r.get("holds", ""), cuts=r.get("cuts", ""), tags=r.get("tags", "")))
         if os.path.exists(dst):
-            continue
+            if old.get(name, ()) == (r["start"], r["end"], r.get("holds", ""), r.get("cuts", "")):
+                continue
+            print(f"re-cutting {name} (edits changed)")
         cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
                "-ss", r["start"], "-t", f"{secs(r['end']) - secs(r['start']):.3f}", "-i", src]
         fc = edit_filter(r.get("holds", ""), r.get("cuts", ""), secs(r["start"]), secs(r["end"]),
@@ -204,6 +212,11 @@ def main():
         with open(os.path.join(a.out, "index.csv"), "w", newline="", encoding="utf-8") as f:
             w = csv.DictWriter(f, fieldnames=list(index[0].keys()))
             w.writeheader(); w.writerows(index)
+    stale = sorted(set(f for f in os.listdir(a.out) if f.endswith(".mp4")) - {i["file"] for i in index})
+    for f in stale:
+        print(("pruned " if a.prune else "orphan (use --prune) ") + f)
+        if a.prune and not a.dry_run:
+            os.remove(os.path.join(a.out, f))
     print(f"\n{done} clips cut, {skipped} rows still need timestamps, {len(index)} in {a.out}/index.csv")
 
 if __name__ == "__main__":
